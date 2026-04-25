@@ -976,13 +976,18 @@ async function showDetail(id){
     // 첨부파일
     let filesHtml='<div style="font-size:.8rem;color:#605e5c">첨부파일 없음</div>';
     if(f.AttachedFiles){
-      // 개행이나 세미콜론 모두 구분자로 처리
-      const rawFiles = f.AttachedFiles.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-      const fileEntries = rawFiles.includes('||') 
-        ? rawFiles.split(/[;\n]+/)  // ; 또는 줄바꿈으로 split
-        : [rawFiles];
-      console.log('[GW Debug] AttachedFiles raw:', JSON.stringify(f.AttachedFiles));
-      console.log('[GW Debug] fileEntries:', fileEntries);
+      // SharePoint가 여러 줄 텍스트를 <div>...</div>로 감싸서 반환 → HTML 태그 제거
+      let cleanFiles = f.AttachedFiles;
+      // HTML 태그 제거
+      cleanFiles = cleanFiles.replace(/<[^>]*>/g, '');
+      // HTML 엔티티 디코딩
+      cleanFiles = cleanFiles.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&#58;/g,':');
+      // 개행 정리
+      cleanFiles = cleanFiles.replace(/\r\n/g,'\n').replace(/\r/g,'\n').trim();
+      console.log('[GW Debug] cleanFiles:', JSON.stringify(cleanFiles.substring(0,200)));
+      // ; 또는 줄바꿈으로 split
+      const fileEntries = cleanFiles.split(/[;\n]+/).filter(e=>e.trim()&&e.includes('||'));
+      console.log('[GW Debug] fileEntries count:', fileEntries.length, fileEntries);
       filesHtml=fileEntries.map(entry=>{
         if(!entry.trim()) return '';
         const firstSep = entry.indexOf('||');
