@@ -407,6 +407,12 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
     </div>
   </div>
 </div>
+
+<!-- 통합결재함 상세 패널 -->
+<div id="uni-detail-box" onclick="if(event.target===this)closeUniDetail()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center">
+  <div id="uni-detail-inner" style="background:#fff;border-radius:10px;padding:22px;width:480px;max-width:94vw;max-height:82vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.25)"></div>
+</div>
+
 <!-- 결재 확인 팝업 -->
 <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:10px;padding:28px 28px 20px;max-width:420px;width:92%;box-shadow:0 4px 24px rgba(0,0,0,.2)">
@@ -1088,8 +1094,9 @@ function openUniDetail(apprId) {
   else                      rows='<tr><td style="color:#605e5c;width:110px;padding:5px 0;border-bottom:1px solid #f3f2f1">유형</td><td style="padding:5px 0;border-bottom:1px solid #f3f2f1">'+(rf.TicketType||'-')+'</td></tr><tr><td style="color:#605e5c;padding:5px 0;border-bottom:1px solid #f3f2f1">제목</td><td style="padding:5px 0;border-bottom:1px solid #f3f2f1">'+(rf.Title||'-')+'</td></tr>';
 
   const box = document.getElementById('uni-detail-box');
-  if(!box) return;
-  box.innerHTML =
+  const inner = document.getElementById('uni-detail-inner');
+  if(!box||!inner) return;
+  inner.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
     '<div style="font-weight:700;font-size:.95rem;color:#323130"><span class="sys-badge '+sys.color+'" style="margin-right:6px">'+sys.key+'</span>신청번호 '+reqId+'</div>' +
     '<button onclick="closeUniDetail()" style="background:none;border:1px solid #d2d0ce;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:.85rem;color:#605e5c">✕</button></div>' +
@@ -1117,6 +1124,8 @@ function openUniDetail(apprId) {
 function closeUniDetail() {
   const box = document.getElementById('uni-detail-box');
   if(box) box.style.display = 'none';
+  const inner = document.getElementById('uni-detail-inner');
+  if(inner) inner.innerHTML = '';
 }
 
 async function loadUnifiedBadge() {
