@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>STK Goodwill Approval</title>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
+/* Login */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:#fff;border-radius:8px;padding:40px 48px;text-align:center;box-shadow:0 2px 16px rgba(0,0,0,.1);max-width:380px;width:100%}
+.login-logo{font-size:2rem;margin-bottom:12px}
+.login-title{font-size:1.2rem;font-weight:700;color:#323130;margin-bottom:6px}
+.login-sub{font-size:.8rem;color:#605e5c;margin-bottom:28px}
+.btn-login{background:#0078d4;color:#fff;border:none;border-radius:4px;padding:10px 28px;font-size:.95rem;cursor:pointer;width:100%}
+.btn-login:hover{background:#106ebe}
+#login-err{color:#a4262c;font-size:.78rem;margin-top:10px;display:none}
+/* App */
+#app{display:none;max-width:960px;margin:0 auto;padding:24px 16px 48px}
+.app-header{background:#fff;border-radius:8px;padding:18px 24px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.app-title{font-size:1.1rem;font-weight:700;color:#323130}
+.app-sub{font-size:.72rem;color:#605e5c;margin-top:3px}
+.btn-logout{background:#fff;border:1px solid #d2d0ce;border-radius:4px;padding:5px 14px;font-size:.78rem;cursor:pointer;color:#323130}
+.btn-logout:hover{background:#f3f2f1}
+/* Tabs */
+.tabs{display:flex;gap:0;margin-bottom:16px;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tab-btn{padding:12px 20px;font-size:.85rem;border:none;background:transparent;cursor:pointer;color:#605e5c;border-bottom:2px solid transparent;transition:all .15s;position:relative}
+.tab-btn.active{color:#0078d4;border-bottom-color:#0078d4;font-weight:600}
+.tab-btn:hover:not(.active){background:#f3f2f1}
+.badge{display:none;background:#a4262c;color:#fff;border-radius:10px;padding:1px 6px;font-size:.65rem;margin-left:5px;font-weight:700}
+/* Card */
+.card{background:#fff;border-radius:8px;padding:24px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card-title{font-size:.9rem;font-weight:700;color:#323130;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #edebe9}
+.section-title{font-size:.82rem;font-weight:600;color:#0078d4;margin:18px 0 12px;padding:5px 10px;background:#f0f6ff;border-radius:4px;border-left:3px solid #0078d4}
+/* Form */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:.75rem;font-weight:600;color:#323130}
+.req-mark{color:#a4262c;margin-left:2px}
+.form-group input,.form-group select,.form-group textarea{border:1px solid #d2d0ce;border-radius:4px;padding:7px 10px;font-size:.82rem;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#0078d4}
+.form-group input[readonly]{background:#f3f2f1;color:#a19f9d}
+.hint{font-size:.7rem;color:#605e5c;font-weight:400}
+/* Email CC */
+.email-row{display:flex;gap:6px;margin-bottom:6px}
+.email-row input{flex:1;border:1px solid #d2d0ce;border-radius:4px;padding:6px 10px;font-size:.82rem;font-family:inherit}
+.email-row input:focus{outline:none;border-color:#0078d4}
+.btn-sm{background:#fff;border:1px solid #d2d0ce;border-radius:4px;padding:5px 10px;font-size:.75rem;cursor:pointer;white-space:nowrap}
+.btn-sm:hover{background:#f3f2f1}
+.btn-sm.del{border-color:#f87171;color:#a4262c}
+/* File */
+.file-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f3f2f1}
+.file-row:last-child{border-bottom:none}
+.file-row input[type="file"]{flex:1;font-size:.75rem;border:1px solid #d2d0ce;border-radius:4px;padding:4px 8px;background:#fff}
+.btn-file-reset{background:#fff;border:1px solid #d2d0ce;border-radius:4px;padding:3px 10px;font-size:.73rem;color:#a4262c;cursor:pointer}
+/* Approver */
+.appr-block{background:#f9f9f9;border:1px solid #edebe9;border-radius:6px;padding:12px;margin-bottom:8px}
+.appr-title{font-size:.78rem;font-weight:600;color:#323130;margin-bottom:8px}
+.appr-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px}
+.appr-grid select{border:1px solid #d2d0ce;border-radius:4px;padding:5px 8px;font-size:.75rem;font-family:inherit;background:#fff}
+.appr-grid select:disabled{background:#f3f2f1;color:#a19f9d}
+.appr-info{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.appr-info input{border:1px solid #d2d0ce;border-radius:4px;padding:5px 8px;font-size:.75rem;font-family:inherit;background:#f3f2f1;color:#605e5c}
+.appr-fixed{background:#f0f6ff;border:1px solid #c7e0f4}
+.appr-cond{background:#fff8ec;border:1px solid #ffd6a0}
+.appr-cond .appr-title{color:#b45309}
+/* Approval line preview */
+.line-preview{background:#f0f6ff;border:1px solid #c7e0f4;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:.75rem;color:#323130}
+.line-preview-title{font-weight:600;color:#0078d4;margin-bottom:6px;font-size:.75rem}
+.line-step{display:inline-flex;align-items:center;gap:4px;margin-right:6px;margin-bottom:4px}
+.line-step-badge{background:#0078d4;color:#fff;border-radius:10px;padding:1px 8px;font-size:.68rem;font-weight:700}
+.line-step-badge.fixed{background:#605e5c}
+.line-step-badge.cond{background:#b45309}
+.line-arrow{color:#a19f9d;font-size:.7rem}
+/* Btn Row */
+.btn-row{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.btn-primary{background:#0078d4;color:#fff;border:none;border-radius:4px;padding:8px 24px;font-size:.85rem;cursor:pointer;font-family:inherit}
+.btn-primary:hover{background:#106ebe}
+.btn-secondary{background:#fff;border:1px solid #d2d0ce;border-radius:4px;padding:8px 24px;font-size:.85rem;cursor:pointer;font-family:inherit}
+.btn-secondary:hover{background:#f3f2f1}
+/* List */
+.list-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.list-table th{padding:9px 12px;text-align:left;background:#f3f2f1;border-bottom:1px solid #edebe9;font-weight:600;color:#323130;font-size:.75rem}
+.list-table td{padding:9px 12px;border-bottom:1px solid #edebe9;color:#323130}
+.list-table tr:hover td{background:#f9f8f7;cursor:pointer}
+/* Badge */
+.badge-type{background:#e1f0ff;color:#0078d4;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
+.badge-대기{background:#fff4ce;color:#7d5700;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
+.badge-승인완료{background:#dff6dd;color:#107c10;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
+.badge-반려{background:#fde7e9;color:#a4262c;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
+/* Pagination */
+#list-pagination,#appr-pagination,#admin-pagination{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:12px;flex-wrap:wrap}
+/* Modal */
+#detail-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
+#detail-modal.open{display:flex}
+.modal-box{background:#fff;border-radius:8px;padding:28px 32px;max-width:680px;width:95%;max-height:88vh;overflow-y:auto;position:relative}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#605e5c}
+.modal-title{font-size:1rem;font-weight:700;color:#323130;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #edebe9}
+.det-sec{font-size:.72rem;font-weight:700;color:#0078d4;background:#f0f6ff;padding:5px 10px;border-radius:4px;border-left:3px solid #0078d4;margin:14px 0 8px}
+.det-row{display:flex;padding:5px 0;border-bottom:1px solid #f3f2f1;font-size:.8rem}
+.det-row:last-child{border-bottom:none}
+.det-lbl{color:#605e5c;width:200px;flex-shrink:0}
+.det-val{color:#323130;font-weight:500;flex:1}
+.appr-item{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:1px solid #edebe9;font-size:.8rem}
+.appr-item:last-child{border-bottom:none}
+.status-대기{color:#7d5700;font-weight:600}
+.status-승인{color:#107c10;font-weight:600}
+.status-반려{color:#a4262c;font-weight:600}
+.status-대기잠김{color:#a19f9d}
+/* Process btns */
+.proc-btns{display:flex;gap:6px;margin-top:12px}
+.btn-approve{background:#107c10;color:#fff;border:none;border-radius:4px;padding:6px 18px;font-size:.82rem;cursor:pointer}
+.btn-reject{background:#a4262c;color:#fff;border:none;border-radius:4px;padding:6px 18px;font-size:.82rem;cursor:pointer}
+textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;padding:7px 10px;font-size:.82rem;font-family:inherit;margin-top:8px;resize:vertical;min-height:60px}
+/* Loading */
+#loading{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);align-items:center;justify-content:center;z-index:999}
+#loading.show{display:flex}
+.loading-box{background:#fff;border-radius:6px;padding:24px 36px;font-size:.9rem;color:#323130;display:flex;flex-direction:column;align-items:center;gap:14px}
+.spinner{width:30px;height:30px;border:3px solid #edebe9;border-top:3px solid #0078d4;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Dynamic Loading Overlay */
+#dyn-loading{display:none;position:fixed;inset:0;background:rgba(255,255,255,0.92);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+#dyn-loading.show{display:flex}
+.dyn-spinner{width:40px;height:40px;border:3px solid #edebe9;border-top:3px solid #0078d4;border-radius:50%;animation:dynSpin .8s linear infinite}
+@keyframes dynSpin{to{transform:rotate(360deg)}}
+.dyn-msg{font-size:.88rem;color:#323130;font-weight:500;display:flex;align-items:center;gap:6px}
+.dyn-dots{display:inline-flex;gap:3px}
+.dyn-dots span{width:4px;height:4px;background:#0078d4;border-radius:50%;animation:dotPulse 1.2s infinite}
+.dyn-dots span:nth-child(2){animation-delay:.2s}
+.dyn-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dotPulse{0%,80%,100%{transform:scale(0);opacity:.3}40%{transform:scale(1);opacity:1}}
+.dyn-sub{font-size:.72rem;color:#a19f9d}
+.dyn-refresh{display:none;background:#0078d4;color:#fff;border:none;border-radius:4px;padding:8px 20px;font-size:.82rem;cursor:pointer;font-family:inherit;margin-top:4px}
+.dyn-refresh:hover{background:#106ebe}
+
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">📋</div>
+    <div class="login-title">STK Goodwill Approval</div>
+    <div class="login-sub">Goodwill / Tech-Care / CCR / Courtesy<br>결재 시스템</div>
+    <button class="btn-login" onclick="signIn()">Microsoft 계정으로 로그인</button>
+    <div id="login-err"></div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="app-header">
+    <div>
+      <div class="app-title">STK Goodwill Approval</div>
+      <div class="app-sub">Goodwill / Tech-Care / CCR / Courtesy 결재 시스템</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="user-name" style="font-size:.8rem;color:#605e5c"></span>
+      <button class="btn-logout" onclick="signOut()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-form-btn" onclick="switchTab('form')">신청서 작성</button>
+    <button class="tab-btn" id="tab-list-btn" onclick="switchTab('list')">내 신청 목록</button>
+    <button class="tab-btn" id="tab-appr-btn" onclick="switchTab('appr')">결재함 <span class="badge" id="appr-badge"></span></button>
+    <button class="tab-btn" id="tab-admin-btn" style="display:none" onclick="switchTab('admin')">관리자</button>
+  </div>
+
+  <!-- ── 신청서 작성 ── -->
+  <div id="tab-form">
+    <div class="card">
+      <div class="card-title">Goodwill / Tech-Care / CCR / Courtesy 신청서</div>
+
+      <div class="section-title">1. 기본 정보</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Company <span class="req-mark">*</span></label>
+          <select id="f-company">
+            <option value="STK">STK</option>
+            <option value="STK Van">STK Van</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount <span class="req-mark">*</span></label>
+          <select id="f-amount" onchange="onAmountOrSourceChange()">
+            <option value="">- Choice Amount -</option>
+            <option value="0~1999999">0 ~ 1,999,999</option>
+            <option value="2000000~4999999">2,000,000 ~ 4,999,999</option>
+            <option value="5000000~">5,000,000 ~</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Source <span class="req-mark">*</span></label>
+          <select id="f-source" onchange="onAmountOrSourceChange()">
+            <option value="">- Choice Source -</option>
+            <option value="Local CSP Goodwill">Local CSP Goodwill</option>
+            <option value="Local CSP Van Goodwill">Local CSP Van Goodwill</option>
+            <option value="Local Sales Goodwill">Local Sales Goodwill</option>
+            <option value="Market Goodwill">Market Goodwill</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Type <span class="req-mark">*</span></label>
+          <select id="f-type">
+            <option value="">- Choice Type -</option>
+            <option value="Free repair/maintenance/retrofit">Free repair/maintenance/retrofit</option>
+            <option value="MB Point">MB Point</option>
+            <option value="Service Voucher">Service Voucher</option>
+            <option value="Fuel Voucher">Fuel Voucher</option>
+            <option value="Tires Voucher">Tires Voucher</option>
+            <option value="Cash">Cash</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Title <span class="req-mark">*</span></label>
+          <input type="text" id="f-title" placeholder="신청 제목">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Email (CC) <span class="hint">— 참조 이메일 (여러 명 추가 가능)</span></label>
+        <div id="email-cc-list">
+          <div class="email-row">
+            <input type="email" placeholder="이메일 입력">
+            <button class="btn-sm" onclick="addEmailCC()">+ Add</button>
+            <button class="btn-sm del" onclick="removeEmailCC(this)">× Remove</button>
+          </div>
+        </div>
+        <button class="btn-sm" style="margin-top:4px;width:fit-content" onclick="removeAllEmailCC()">× Remove All</button>
+      </div>
+
+      <div class="section-title">2. 상세 내용</div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Description</label>
+        <textarea id="f-desc" rows="4" placeholder="신청 내용을 상세히 입력해주세요" maxlength="3950" oninput="updateDescCount()"></textarea>
+        <div style="text-align:right;font-size:.7rem;color:#605e5c"><span id="desc-count">0</span> / 3950 byte</div>
+      </div>
+
+      <div class="section-title">3. 첨부파일</div>
+      <div style="margin-bottom:6px;font-size:.75rem;color:#605e5c">※ 파일 1개당 최대 20MB / 전체 합계 최대 20MB</div>
+      <div style="margin-bottom:4px;font-size:.75rem;font-weight:600;color:#323130">Goodwill/Tech Care <span class="req-mark">*</span></div>
+      <div class="file-row"><input type="file" id="f-main" onchange="checkGwFileSize(this)"><button class="btn-file-reset" onclick="rf('f-main')">Reset</button></div>
+      <div style="margin:10px 0 4px;font-size:.75rem;font-weight:600;color:#323130">Attachment</div>
+      <div class="file-row"><input type="file" id="att1" onchange="checkGwFileSize(this)"><button class="btn-file-reset" onclick="rf('att1')">Reset</button></div>
+      <div class="file-row"><input type="file" id="att2" onchange="checkGwFileSize(this)"><button class="btn-file-reset" onclick="rf('att2')">Reset</button></div>
+      <div class="file-row"><input type="file" id="att3" onchange="checkGwFileSize(this)"><button class="btn-file-reset" onclick="rf('att3')">Reset</button></div>
+      <div class="file-row"><input type="file" id="att4" onchange="checkGwFileSize(this)"><button class="btn-file-reset" onclick="rf('att4')">Reset</button></div>
+
+      <div class="section-title">4. 결재자 지정 (Approvers)</div>
+
+      <!-- 선택 전 안내 -->
+      <div id="appr-guide" style="background:#f9f8f7;border:1px dashed #c8c6c4;border-radius:6px;padding:18px;text-align:center;color:#a19f9d;font-size:.82rem;margin-bottom:12px">
+        <div style="font-size:1.4rem;margin-bottom:6px">📋</div>
+        <div style="font-weight:600;color:#605e5c;margin-bottom:4px">Source와 Amount를 선택하면</div>
+        <div>결재 라인이 자동으로 구성됩니다</div>
+      </div>
+
+      <!-- 결재 라인 프리뷰 -->
+      <div class="line-preview" id="line-preview" style="display:none">
+        <div class="line-preview-title">📋 결재 라인 (Source & Amount 기준 자동 구성)</div>
+        <div id="line-preview-content"></div>
+      </div>
+      <div id="appr-blocks"></div>
+
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="resetForm()">초기화</button>
+        <button class="btn-primary" onclick="submitForm()">제출</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 내 신청 목록 ── -->
+  <div id="tab-list" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="list-table">
+        <thead><tr><th>번호</th><th>Source</th><th>Type</th><th>Title</th><th>상태</th><th>신청일</th></tr></thead>
+        <tbody id="list-body"><tr><td colspan="6" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
+      </table>
+    </div>
+    <div id="list-pagination"></div>
+  </div>
+
+  <!-- ── 결재함 ── -->
+  <div id="tab-appr" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="list-table">
+        <thead><tr><th>신청번호</th><th>신청자</th><th>Source</th><th>Type</th><th>상태</th><th>신청일</th><th>처리</th></tr></thead>
+        <tbody id="appr-body"><tr><td colspan="7" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
+      </table>
+    </div>
+    <div id="appr-pagination"></div>
+  </div>
+
+  <!-- ── 관리자 ── -->
+  <div id="tab-admin" style="display:none">
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <select id="admin-status" onchange="loadAdminList()" style="border:1px solid #d2d0ce;border-radius:4px;padding:6px 10px;font-size:.82rem;font-family:inherit">
+        <option value="">전체 상태</option>
+        <option value="대기">대기</option>
+        <option value="승인완료">승인완료</option>
+        <option value="반려">반려</option>
+      </select>
+      <select id="admin-source" onchange="loadAdminList()" style="border:1px solid #d2d0ce;border-radius:4px;padding:6px 10px;font-size:.82rem;font-family:inherit">
+        <option value="">전체 Source</option>
+        <option value="Local CSP Goodwill">Local CSP Goodwill</option>
+        <option value="Local CSP Van Goodwill">Local CSP Van Goodwill</option>
+        <option value="Local Sales Goodwill">Local Sales Goodwill</option>
+        <option value="Market Goodwill">Market Goodwill</option>
+      </select>
+      <span style="font-size:.8rem;color:#605e5c;align-self:center" id="admin-count"></span>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="list-table">
+        <thead><tr><th>번호</th><th>신청자</th><th>Source</th><th>Type</th><th>Amount</th><th>상태</th><th>신청일</th></tr></thead>
+        <tbody id="admin-body"><tr><td colspan="7" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
+      </table>
+    </div>
+    <div id="admin-pagination"></div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div id="detail-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title">신청 상세 내용</div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- 결재 확인 팝업 -->
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:10px;padding:28px 28px 20px;max-width:420px;width:92%;box-shadow:0 4px 24px rgba(0,0,0,.2)">
+    <div id="confirm-title" style="font-size:1rem;font-weight:700;color:#323130;margin-bottom:6px"></div>
+    <div id="confirm-sub" style="font-size:.78rem;color:#605e5c;margin-bottom:14px"></div>
+    <textarea id="confirm-comment" rows="3" placeholder="의견 입력 (선택사항)" style="width:100%;border:1px solid #d2d0ce;border-radius:4px;padding:8px 10px;font-size:.82rem;font-family:inherit;resize:vertical;margin-bottom:14px"></textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="closeConfirm()" style="background:#fff;border:1px solid #d2d0ce;border-radius:4px;padding:7px 20px;font-size:.85rem;cursor:pointer">취소</button>
+      <button id="confirm-ok-btn" style="border:none;border-radius:4px;padding:7px 20px;font-size:.85rem;cursor:pointer;font-weight:600"></button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Dynamic Loading Overlay -->
+<div id="dyn-loading">
+  <div class="dyn-spinner"></div>
+  <div class="dyn-msg"><span id="dyn-msg-text">데이터 불러오는 중</span><div class="dyn-dots"><span></span><span></span><span></span></div></div>
+  <div class="dyn-sub" id="dyn-sub-text"></div>
+  <button class="dyn-refresh" id="dyn-refresh-btn" onclick="location.reload()">🔄 새로고침</button>
+</div>
+
+<div id="loading"><div class="loading-box"><div class="spinner"></div><span>처리 중입니다...</span></div></div>
+
+<script>
+// ── Constants ──
+const CLIENT_ID  = '432976c2-b43a-492e-8213-ece505fa1f51';
+const TENANT_ID  = '19cab1f5-21f4-44df-8ac6-96d6ca595203';
+const SITE_PATH  = 'startruckkorea.sharepoint.com:/sites/STK-DB:';
+const GRAPH      = 'https://graph.microsoft.com/v1.0';
+const SCOPES     = ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'];
+const LIST_REQ   = 'GW_Requests';
+const LIST_APR   = 'GW_Approvals';
+const ADMIN_EMAILS = ['jungho.yoo@hyosung.com','admin@startruckkorea.onmicrosoft.com'];
+
+// 고정 결재자
+const CONTROLLING = { name:'Jungho Yoo',        email:'jungho.yoo@hyosung.com',          role:'Controlling' };
+const CFO         = { name:'Martin Schindele',   email:'martin.s.schindele@hyosung.com',  role:'CFO'         };
+const CEO         = { name:'Antonio Randazzo',   email:'antonio.randazzo@hyosung.com',    role:'CEO'         };
+
+// ── 결재 라인 매트릭스 ──
+// 동적 결재자 역할 (직원 검색으로 지정)
+// 'CS_TM' = CS Team Manager, 'TSM' = Technical Service Manager,
+// 'SP_VP' = S&P VP 2nd, 'SA1' = Sales Assistant1, 'SA2' = Sales Assistant2, 'SD' = Sales Director
+// 고정: 'CTRL' = Controlling, 'CFO_' = CFO, 'CEO_' = CEO
+
+const APPROVAL_MATRIX = {
+  'Local CSP Goodwill': {
+    '0~1999999':     ['CS_TM', 'CTRL'],
+    '2000000~4999999':['CS_TM','TSM','SP_VP','CTRL'],
+    '5000000~':      ['CS_TM','TSM','SP_VP','CEO_','CTRL','CFO_'],
+  },
+  'Local CSP Van Goodwill': {
+    '0~1999999':     ['CS_TM'],
+    '2000000~4999999':['CS_TM','SP_VP','CTRL'],
+    '5000000~':      ['CS_TM','SP_VP','CEO_','CTRL','CFO_'],
+  },
+  'Local Sales Goodwill': {
+    '0~1999999':     ['SA2','SA1','SD','CS_TM','CTRL'],
+    '2000000~4999999':['SA2','SA1','SD','CS_TM','CTRL'],
+    '5000000~':      ['SA2','SA1','SD','CS_TM','CEO_','CTRL','CFO_'],
+  },
+  'Market Goodwill': {
+    '0~1999999':     ['CS_TM','CTRL'],
+    '2000000~4999999':['CS_TM','TSM','SP_VP','CTRL'],
+    '5000000~':      ['CS_TM','TSM','SP_VP','CTRL','CFO_'],
+  },
+};
+
+const ROLE_LABELS = {
+  CS_TM:'CS Team Manager', TSM:'Technical Service Manager',
+  SP_VP:'S&P VP 2nd', SA1:'Sales Assistant1', SA2:'Sales Assistant2',
+  SD:'Sales Director', CTRL:'Controlling (고정)', CFO_:'CFO (고정)', CEO_:'CEO (고정)',
+};
+const FIXED_ROLES = ['CTRL','CFO_','CEO_'];
+
+let msal_g=null, user=null, siteId=null, employeeData=[], allReqCache=[];
+
+// ── MSAL ──
+async function signIn() {
+  try {
+    if (window!==window.top){window.open(window.location.href,'_blank');return;}
+    const r = await msal_g.loginPopup({scopes:SCOPES});
+    msal_g.setActiveAccount(r.account);
+    await boot(r.account);
+  } catch(e){ showLoginError(e.message); }
+}
+function signOut(){ msal_g.logoutRedirect(); }
+function showLoginError(msg){ const el=document.getElementById('login-err'); el.textContent=msg; el.style.display='block'; }
+
+async function token(){
+  try { return (await msal_g.acquireTokenSilent({scopes:SCOPES,account:msal_g.getActiveAccount()})).accessToken; }
+  catch(e) {
+    if(e.name==='InteractionRequiredAuthError'||(e.errorCode&&e.errorCode.includes('interaction_required'))){
+      const r=await msal_g.acquireTokenPopup({scopes:SCOPES}); msal_g.setActiveAccount(r.account); return r.accessToken;
+    }
+    throw e;
+  }
+}
+async function api(path,method='GET',body=null){
+  const t=await token();
+  const opts={method,headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'}};
+  if(body)opts.body=JSON.stringify(body);
+  const res=await fetch(GRAPH+path,opts);
+  if(!res.ok)throw new Error((await res.json())?.error?.message||res.status);
+  return res.status===204?null:res.json();
+}
+function loading(on){ document.getElementById('loading').className=on?'show':''; }
+function fmtDate(s){ if(!s)return''; const d=new Date(s); return d.getFullYear()+'-'+(d.getMonth()+1+'').padStart(2,'0')+'-'+(d.getDate()+'').padStart(2,'0')+' '+(d.getHours()+'').padStart(2,'0')+':'+(d.getMinutes()+'').padStart(2,'0'); }
+
+// ── Boot ──
+async function boot(account){
+  user=account;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('user-name').textContent=account.name||account.username;
+  try {
+    try {
+      const me = await api('/me?$select=mail,userPrincipalName');
+      user.email = (me.mail||me.userPrincipalName||account.username).toLowerCase();
+    } catch(me_err) { user.email = (account.username||'').toLowerCase(); }
+    const site = await api('/sites/'+SITE_PATH);
+    siteId=site.id;
+    await loadEmployees();
+    await checkApprovalBadge();
+    if(ADMIN_EMAILS.map(e=>e.toLowerCase()).includes(user.email)){
+      document.getElementById('tab-admin-btn').style.display='block';
+    }
+  } catch(e){ alert('SharePoint 연결 오류: '+e.message); }
+}
+// ── MSAL Init ──
+(async () => {
+  const inst = await msal.PublicClientApplication.createPublicClientApplication({
+    auth: { clientId: CLIENT_ID, authority: 'https://login.microsoftonline.com/' + TENANT_ID, redirectUri: window.location.origin + window.location.pathname },
+    cache: { cacheLocation: 'localStorage' }
+  });
+  msal_g = inst;
+  const resp = await msal_g.handleRedirectPromise();
+  if (resp) { msal_g.setActiveAccount(resp.account); await boot(resp.account); return; }
+  const accounts = msal_g.getAllAccounts();
+  if (accounts.length) { msal_g.setActiveAccount(accounts[0]); await boot(accounts[0]); return; }
+})();
+
+// ── Employees ──
+async function loadEmployees(){
+  try{
+    const drivesData=await api('/sites/'+siteId+'/drives');
+    const docDrive=drivesData.value.find(d=>d.name==='문서')||drivesData.value[0];
+    const t=await token();
+    const res=await fetch(GRAPH+'/drives/'+docDrive.id+'/root:/employee_search.xlsx:/content',{headers:{Authorization:'Bearer '+t}});
+    if(!res.ok)throw new Error('직원 데이터 로드 실패');
+    const buf=await res.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    employeeData=rows.map(r=>({dept:r['Department']||'',team:r['Team']||'',name:r['EngName']||'',email:(r['EMail']||r['email']||'')})).filter(r=>r.email&&r.name);
+  }catch(e){ console.warn('직원 데이터 로드 실패:',e); }
+}
+
+// ── Tab ──
+function switchTab(t){
+  ['form','list','appr','admin'].forEach(n=>{
+    document.getElementById('tab-'+n).style.display=n===t?'block':'none';
+    document.getElementById('tab-'+n+'-btn').classList.toggle('active',n===t);
+  });
+  if(t==='list')loadMyList();
+  if(t==='appr')loadApprovalQueue();
+  if(t==='admin')loadAdminList();
+}
+
+// ── Email CC ──
+function addEmailCC(){
+  const div=document.createElement('div'); div.className='email-row';
+  div.innerHTML='<input type="email" placeholder="이메일 입력"><button class="btn-sm" onclick="addEmailCC()">+ Add</button><button class="btn-sm del" onclick="removeEmailCC(this)">× Remove</button>';
+  document.getElementById('email-cc-list').appendChild(div);
+}
+function removeEmailCC(btn){ const row=btn.closest('.email-row'); if(document.querySelectorAll('#email-cc-list .email-row').length>1)row.remove(); else row.querySelector('input').value=''; }
+function removeAllEmailCC(){ document.querySelectorAll('#email-cc-list .email-row').forEach((r,i)=>{ if(i>0)r.remove(); else r.querySelector('input').value=''; }); }
+
+// ── Description count ──
+function updateDescCount(){ document.getElementById('desc-count').textContent=document.getElementById('f-desc').value.length; }
+
+// ── File ──
+function rf(id){ const el=document.getElementById(id); if(el)el.value=''; }
+function checkGwFileSize(input){
+  if(!input.files[0])return;
+  const mb=input.files[0].size/1024/1024;
+  if(mb>20){ alert(input.files[0].name+'\n파일 크기('+mb.toFixed(1)+'MB)가 최대 허용 용량(20MB)을 초과합니다.'); input.value=''; }
+}
+
+// ── Approval line builder ──
+function getApprovalLine(source, amount){
+  const matrix = APPROVAL_MATRIX[source];
+  if(!matrix||!amount)return[];
+  return matrix[amount]||[];
+}
+
+function onAmountOrSourceChange(){
+  const source=document.getElementById('f-source').value;
+  const amount=document.getElementById('f-amount').value;
+  renderApproverBlocks(source, amount);
+}
+
+function renderApproverBlocks(source, amount){
+  const container=document.getElementById('appr-blocks');
+  const preview=document.getElementById('line-preview');
+  const previewContent=document.getElementById('line-preview-content');
+  const guide=document.getElementById('appr-guide');
+  container.innerHTML='';
+
+  if(!source||!amount){
+    preview.style.display='none';
+    if(guide) guide.style.display='block';
+    return;
+  }
+  if(guide) guide.style.display='none';
+
+  const line=getApprovalLine(source,amount);
+  if(!line.length){ preview.style.display='none'; return; }
+
+  // 결재 라인 프리뷰
+  preview.style.display='block';
+  previewContent.innerHTML=line.map((role,i)=>`
+    <span class="line-step">
+      <span class="line-step-badge ${FIXED_ROLES.includes(role)?'fixed':''}">${i+1}차</span>
+      <span style="font-size:.75rem">${ROLE_LABELS[role]||role}</span>
+      ${i<line.length-1?'<span class="line-arrow">→</span>':''}
+    </span>`).join('');
+
+  // 각 결재자 블록 렌더
+  line.forEach((role,i)=>{
+    const order=i+1;
+    const isFixed=FIXED_ROLES.includes(role);
+    const div=document.createElement('div');
+    div.className='appr-block '+(isFixed?'appr-fixed':'');
+
+    if(role==='CTRL'){
+      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— Controlling (자동 지정)</span></div>
+        <div class="appr-info"><input type="text" value="Jungho Yoo" readonly><input type="email" value="jungho.yoo@hyosung.com" readonly></div>`;
+    } else if(role==='CFO_'){
+      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CFO (자동 지정)</span></div>
+        <div class="appr-info"><input type="text" value="Martin Schindele" readonly><input type="email" value="martin.s.schindele@hyosung.com" readonly></div>`;
+    } else if(role==='CEO_'){
+      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CEO (자동 지정)</span></div>
+        <div class="appr-info"><input type="text" value="Antonio Randazzo" readonly><input type="email" value="antonio.randazzo@hyosung.com" readonly></div>`;
+    } else {
+      const label=ROLE_LABELS[role]||role;
+      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="req-mark">*</span> <span class="hint">— ${label}</span></div>
+        <div class="appr-grid">
+          <select id="ga${order}-dept" onchange="gwDeptChange(${order})"><option value="">부서</option>${[...new Set(employeeData.map(e=>e.dept))].sort().map(d=>`<option value="${d}">${d}</option>`).join('')}</select>
+          <select id="ga${order}-team" onchange="gwTeamChange(${order})" disabled><option value="">팀</option></select>
+          <select id="ga${order}-person" onchange="gwPersonChange(${order})" disabled><option value="">직원 선택</option></select>
+        </div>
+        <div class="appr-info">
+          <input type="text" id="ga${order}-name" readonly placeholder="이름">
+          <input type="email" id="ga${order}-email" readonly placeholder="이메일">
+        </div>`;
+    }
+    div.dataset.role=role;
+    div.dataset.order=order;
+    container.appendChild(div);
+  });
+}
+
+function gwDeptChange(order){
+  const dept=document.getElementById('ga'+order+'-dept').value;
+  const tSel=document.getElementById('ga'+order+'-team');
+  const pSel=document.getElementById('ga'+order+'-person');
+  document.getElementById('ga'+order+'-name').value='';
+  document.getElementById('ga'+order+'-email').value='';
+  const teams=[...new Set(employeeData.filter(e=>e.dept===dept).map(e=>e.team))].sort();
+  tSel.innerHTML='<option value="">팀</option>'+teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  tSel.disabled=!dept; pSel.innerHTML='<option value="">직원 선택</option>'; pSel.disabled=true;
+}
+function gwTeamChange(order){
+  const dept=document.getElementById('ga'+order+'-dept').value;
+  const team=document.getElementById('ga'+order+'-team').value;
+  const pSel=document.getElementById('ga'+order+'-person');
+  document.getElementById('ga'+order+'-name').value='';
+  document.getElementById('ga'+order+'-email').value='';
+  const persons=employeeData.filter(e=>e.dept===dept&&e.team===team);
+  pSel.innerHTML='<option value="">직원 선택</option>'+persons.map(p=>`<option value="${p.email}">${p.name}</option>`).join('');
+  pSel.disabled=!team;
+}
+function gwPersonChange(order){
+  const email=document.getElementById('ga'+order+'-person').value;
+  const p=employeeData.find(e=>e.email===email);
+  document.getElementById('ga'+order+'-name').value=p?p.name:'';
+  document.getElementById('ga'+order+'-email').value=p?p.email:'';
+}
+
+// ── Submit ──
+async function submitForm(){
+  const source=document.getElementById('f-source').value;
+  const amount=document.getElementById('f-amount').value;
+  const type  =document.getElementById('f-type').value;
+  const title =document.getElementById('f-title').value.trim();
+  const company=document.getElementById('f-company').value;
+
+  if(!source){alert('Source를 선택해주세요.');return;}
+  if(!amount){alert('Amount를 선택해주세요.');return;}
+  if(!type)  {alert('Type을 선택해주세요.');return;}
+  if(!title) {alert('Title을 입력해주세요.');return;}
+  if(!document.getElementById('f-main').files.length){alert('Goodwill/Tech Care 파일을 첨부해주세요.');return;}
+
+  // 결재자 검증
+  const line=getApprovalLine(source,amount);
+  for(let i=0;i<line.length;i++){
+    const role=line[i]; const order=i+1;
+    if(!FIXED_ROLES.includes(role)){
+      const email=document.getElementById('ga'+order+'-email')?.value;
+      if(!email){alert((order)+'차 결재자('+ROLE_LABELS[role]+')를 지정해주세요.');return;}
+    }
+  }
+
+  // 파일 용량 체크
+  const fileIds=['f-main','att1','att2','att3','att4'];
+  let totalMB=0;
+  for(const fid of fileIds){
+    const el=document.getElementById(fid);
+    if(el&&el.files[0]){
+      const mb=el.files[0].size/1024/1024;
+      if(mb>20){alert(el.files[0].name+'\n파일 크기('+mb.toFixed(1)+'MB)가 최대 허용 용량(20MB)을 초과합니다.');el.value='';return;}
+      totalMB+=mb;
+    }
+  }
+  if(totalMB>20){alert('첨부파일 전체 합계('+totalMB.toFixed(1)+'MB)가 최대 허용 용량(20MB)을 초과합니다.');return;}
+
+  loading(true);
+  try{
+    const ccEmails=Array.from(document.querySelectorAll('#email-cc-list input[type="email"]')).map(el=>el.value.trim()).filter(Boolean).join(';');
+    const now=new Date().toISOString();
+    const fields={
+      Title:title, Company:company, Source:source, Amount:amount,
+      GoodwillType:type, Description:document.getElementById('f-desc').value,
+      EmailCC:ccEmails, Status:'대기', RequesterEmail:user.email, RequestDate:now,
+    };
+    const item=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items','POST',{fields});
+    const reqId=parseInt(item.id);
+
+    // 파일 업로드
+    const allFiles=[];
+    fileIds.forEach(id=>{const el=document.getElementById(id);if(el&&el.files.length)allFiles.push(...Array.from(el.files));});
+    if(allFiles.length){
+      try{
+        const drivesData=await api('/sites/'+siteId+'/drives');
+        const drive=drivesData.value.find(d=>d.name==='AttachedFiles')||drivesData.value[0];
+        const t=await token();
+        const links=[];
+        for(const file of allFiles){
+          try{
+            const buf=await file.arrayBuffer();
+            const res=await fetch(GRAPH+'/drives/'+drive.id+'/root:/GW_Requests_AttachedFiles/'+reqId+'/'+encodeURIComponent(file.name)+':/content',
+              {method:'PUT',headers:{Authorization:'Bearer '+t,'Content-Type':file.type||'application/octet-stream'},body:buf});
+            if(res.ok){const u=await res.json();links.push(file.name+'||'+drive.id+'||'+u.id);}
+          }catch(fe){console.error('File upload error:',fe);}
+        }
+        if(links.length)await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{AttachedFiles:links.join(';')}});
+      }catch(fe){console.error('Drive error:',fe);}
+    }
+
+    // 결재자 등록
+    const approvers=[];
+    line.forEach((role,i)=>{
+      const order=i+1;
+      if(role==='CTRL') approvers.push({...CONTROLLING,order,role:'결재자(Controlling)'});
+      else if(role==='CFO_') approvers.push({...CFO,order,role:'결재자(CFO)'});
+      else if(role==='CEO_') approvers.push({...CEO,order,role:'결재자(CEO)'});
+      else{
+        const name=document.getElementById('ga'+order+'-name').value;
+        const email=document.getElementById('ga'+order+'-email').value;
+        approvers.push({name,email,order,role:(order)+'차결재자('+ROLE_LABELS[role]+')'});
+      }
+    });
+    for(const a of approvers){
+      await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items','POST',{fields:{
+        Title:reqId+'-'+a.order, RequestID:reqId,
+        ApproverEmail:a.email, ApproverName:a.name,
+        ApproverRole:a.role, ApprovalOrder:a.order,
+        Status:a.order===1?'대기':'대기(잠김)'
+      }});
+    }
+    alert('✅ 신청이 완료되었습니다! (번호: '+reqId+')');
+    resetForm(); switchTab('list');
+  }catch(e){alert('오류: '+e.message);}
+  finally{loading(false);}
+}
+
+// ── Reset ──
+function resetForm(){
+  document.getElementById('f-company').selectedIndex=0;
+  document.getElementById('f-source').selectedIndex=0;
+  document.getElementById('f-amount').selectedIndex=0;
+  document.getElementById('f-type').selectedIndex=0;
+  document.getElementById('f-title').value='';
+  document.getElementById('f-desc').value='';
+  document.getElementById('desc-count').textContent='0';
+  removeAllEmailCC();
+  ['f-main','att1','att2','att3','att4'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('appr-blocks').innerHTML='';
+  document.getElementById('line-preview').style.display='none';
+  const g=document.getElementById('appr-guide'); if(g) g.style.display='block';
+}
+
+// ── Pagination ──
+const PAGE_SIZE=20,_pgState={};
+function pgSet(id,items,renderer,empty,cols){_pgState[id]={items,page:0,renderer,empty,cols};pgRender(id);}
+function pgRender(id){
+  const s=_pgState[id];if(!s)return;
+  const tbody=document.getElementById(id+'-body');if(!tbody)return;
+  const total=s.items.length,pages=Math.max(1,Math.ceil(total/PAGE_SIZE)),cur=Math.min(s.page,pages-1);
+  s.page=cur;
+  const slice=s.items.slice(cur*PAGE_SIZE,(cur+1)*PAGE_SIZE);
+  tbody.innerHTML=slice.length?slice.map(s.renderer).join(''):`<tr><td colspan="${s.cols}" style="text-align:center;padding:32px;color:#605e5c">${s.empty}</td></tr>`;
+  let pg=document.getElementById(id+'-pagination');
+  if(!pg)return;
+  if(pages<=1){pg.innerHTML='';return;}
+  const bs=(a,c)=>{const base='border-radius:4px;padding:4px 9px;font-size:.8rem;cursor:pointer;border:1px solid ';return c?base+'#0078d4;background:#0078d4;color:#fff;font-weight:700':a?base+'#d2d0ce;background:#fff;color:#323130':base+'#edebe9;background:#f3f2f1;color:#a19f9d;cursor:default';};
+  let html=`<button onclick="pgGo('${id}',${cur-1})" style="${bs(cur>0)}" ${cur===0?'disabled':''}>&#8249;</button>`;
+  const rng=cur<4?[...Array(Math.min(5,pages)).keys()]:cur>pages-5?Array.from({length:Math.min(5,pages)},(_,i)=>pages-5+i):[cur-1,cur,cur+1];
+  if(pages>7){if(cur>=4){html+='<button onclick="pgGo(\''+id+'\',0)" style="'+bs(true)+'">1</button><span style="padding:0 4px">…</span>';}
+  rng.forEach(p=>{if(p>=0&&p<pages)html+=`<button onclick="pgGo('${id}',${p})" style="${bs(true,p===cur)}">${p+1}</button>`;});
+  if(cur<=pages-5){html+='<span style="padding:0 4px">…</span><button onclick="pgGo(\''+id+'\','+(pages-1)+')" style="'+bs(true)+'">'+(pages)+'</button>';}}
+  else{for(let p=0;p<pages;p++)html+=`<button onclick="pgGo('${id}',${p})" style="${bs(true,p===cur)}">${p+1}</button>`;}
+  html+=`<button onclick="pgGo('${id}',${cur+1})" style="${bs(cur<pages-1)}" ${cur===pages-1?'disabled':''}>&#8250;</button>`;
+  pg.innerHTML=html;
+}
+function pgGo(id,p){if(!_pgState[id])return;const tot=_pgState[id].items.length,pages=Math.ceil(tot/PAGE_SIZE);if(p<0||p>=pages)return;_pgState[id].page=p;pgRender(id);document.getElementById(id+'-body')?.closest('table')?.scrollIntoView({behavior:'smooth',block:'start'});}
+
+// ── Load My List ──
+async function loadMyList(){
+  const tbody=document.getElementById('list-body');
+  dynLoadStart('Goodwill 데이터 불러오는 중');
+  try{
+    const data=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500');
+    const mine=data.value.filter(i=>(i.fields.RequesterEmail||'').toLowerCase()===(user.email||'').toLowerCase()).sort((a,b)=>b.id-a.id);
+    dynLoadEnd(); pgSet('list',mine,item=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})"><td>${item.id}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td>${f.Title||''}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;}, '신청 내역이 없습니다.', 6);
+  }catch(e){tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+}
+
+// ── Approval Queue ──
+async function loadApprovalQueue(){
+  const tbody=document.getElementById('appr-body');
+  dynLoadStart('결재 정보 확인 중');
+  try{
+    const [apprData,reqData]=await Promise.all([
+      api('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=500'),
+      api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500'),
+    ]);
+    const reqMap={};reqData.value.forEach(r=>{reqMap[r.id]=r.fields;});
+    const mine=apprData.value.filter(i=>(i.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&i.fields.Status==='대기').sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
+    const rows=mine.map(item=>{
+      const f=item.fields,rf=reqMap[String(f.RequestID)]||{};
+      return`<tr><td style="color:#0078d4;cursor:pointer" onclick="showDetail(${f.RequestID})">${f.RequestID}</td><td>${rf.RequesterEmail||''}</td><td><span class="badge-type">${rf.Source||''}</span></td><td>${rf.GoodwillType||''}</td><td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
+    });
+    dynLoadEnd(); pgSet('appr',rows,r=>r,'결재 대기 항목이 없습니다.',7);
+    const badge=document.getElementById('appr-badge');badge.textContent=mine.length;badge.style.display=mine.length?'inline':'none';
+  }catch(e){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+}
+
+// ── Process Approval ──
+// ── 결재 확인 팝업 ──
+let _pendingApproval = null;
+
+function showConfirm(apprId, action, reqId){
+  _pendingApproval = {apprId, action, reqId};
+  const isReject = action === '반려';
+  const modal = document.getElementById('confirm-modal');
+  document.getElementById('confirm-title').textContent = isReject ? '❌ 반려 확인' : '✅ 승인 확인';
+  document.getElementById('confirm-sub').textContent = isReject
+    ? '반려 사유를 입력해주세요. (필수)'
+    : '이 신청을 승인하시겠습니까?';
+  const commentEl = document.getElementById('confirm-comment');
+  commentEl.value = '';
+  commentEl.placeholder = isReject ? '반려 사유 입력 (필수)' : '의견 입력 (선택사항)';
+  const okBtn = document.getElementById('confirm-ok-btn');
+  okBtn.textContent = isReject ? '반려' : '승인';
+  okBtn.style.background = isReject ? '#a4262c' : '#107c10';
+  okBtn.style.color = '#fff';
+  okBtn.onclick = confirmApproval;
+  modal.style.display = 'flex';
+}
+
+function closeConfirm(){
+  document.getElementById('confirm-modal').style.display = 'none';
+  _pendingApproval = null;
+}
+
+async function confirmApproval(){
+  if(!_pendingApproval) return;
+  const {apprId, action, reqId} = _pendingApproval;
+  const comment = document.getElementById('confirm-comment').value.trim();
+  if(action === '반려' && !comment){ alert('반려 사유를 입력해주세요.'); return; }
+  closeConfirm();
+  await processApproval(apprId, action, reqId, comment);
+}
+
+async function processApproval(apprId,action,reqId,comment=''){
+  loading(true);
+  try{
+    await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+apprId,'PATCH',{fields:{Status:action==='승인'?'승인':action,Comment:comment,ApprovalDate:new Date().toISOString()}});
+    if(action==='반려'){
+      await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'반려'}});
+    } else {
+      const all=await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=500');
+      const next=all.value.filter(i=>i.fields.RequestID===reqId&&i.fields.Status==='대기(잠김)').sort((a,b)=>a.fields.ApprovalOrder-b.fields.ApprovalOrder);
+      if(next.length) await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+next[0].id,'PATCH',{fields:{Status:'대기'}});
+      else await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'승인완료'}});
+    }
+    closeModal(); loadApprovalQueue();
+  }catch(e){alert('오류: '+e.message);}
+  finally{loading(false);}
+}
+
+// ── Admin List ──
+async function loadAdminList(){
+  const tbody=document.getElementById('admin-body');
+  dynLoadStart('Goodwill 데이터 불러오는 중');
+  try{
+    const data=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500');
+    const status=document.getElementById('admin-status').value;
+    const source=document.getElementById('admin-source').value;
+    let items=data.value.sort((a,b)=>b.id-a.id);
+    if(status)items=items.filter(i=>i.fields.Status===status);
+    if(source)items=items.filter(i=>i.fields.Source===source);
+    document.getElementById('admin-count').textContent='총 '+items.length+'건';
+    dynLoadEnd(); pgSet('admin',items,item=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td>${item.id}</td><td>${f.RequesterEmail||''}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td>${(f.Amount||'').replace('~',' ~ ')}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',7);
+  }catch(e){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+}
+
+// ── Detail Modal ──
+async function showDetail(id){
+  const modal=document.getElementById('detail-modal');
+  document.getElementById('modal-content').innerHTML='<div style="text-align:center;padding:32px;color:#605e5c">불러오는 중...</div>';
+  modal.className='open';
+  try{
+    const [r,apprData]=await Promise.all([
+      api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+id+'?$expand=fields'),
+      api('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=500'),
+    ]);
+    const f=r.fields;
+    const apprList=apprData.value.filter(i=>i.fields.RequestID===parseInt(id)).sort((a,b)=>a.fields.ApprovalOrder-b.fields.ApprovalOrder);
+
+    const yn=v=>!v?'-':v==='yes'?'YES':v==='no'?'NO':v;
+    const sec=t=>`<div class="det-sec">${t}</div>`;
+    const row=(l,v)=>`<div class="det-row"><span class="det-lbl">${l}</span><span class="det-val">${v||'-'}</span></div>`;
+
+    // 첨부파일
+    let filesHtml='<div style="font-size:.8rem;color:#605e5c">첨부파일 없음</div>';
+    if(f.AttachedFiles){
+      filesHtml=f.AttachedFiles.split(';').map(entry=>{
+        const parts=entry.split('||');
+        const name=parts[0]||entry;
+        if(parts.length===3){
+          const driveId=decodeURIComponent(parts[1]),itemId=decodeURIComponent(parts[2]);
+          return`<div style="padding:4px 0;font-size:.8rem">📎 <a href="#" class="file-dl-link" data-drive="${encodeURIComponent(driveId)}" data-id="${encodeURIComponent(itemId)}" data-name="${encodeURIComponent(name)}" style="color:#0078d4;cursor:pointer">${name}</a></div>`;
+        }
+        return`<div style="padding:4px 0;font-size:.8rem;color:#605e5c">📎 ${name}</div>`;
+      }).join('');
+    }
+
+    // 결재 이력
+    const apprHtml=apprList.map(a=>{
+      const af=a.fields;
+      const st=af.Status==='대기'?'status-대기':af.Status==='승인'?'status-승인':af.Status==='반려'?'status-반려':'status-대기잠김';
+      return`<div class="appr-item"><div><b>${af.ApprovalOrder}차</b> ${af.ApproverRole||''}<br><span style="font-size:.72rem;color:#605e5c">${af.ApproverName||''} · ${af.ApproverEmail||''}</span>${af.Comment?`<br><span style="font-size:.72rem;color:#a4262c">💬 ${af.Comment}</span>`:''}</div><span class="${st}">${af.Status}</span></div>`;
+    }).join('');
+
+    // 내 결재 대기 건
+    const myPending=apprList.find(a=>(a.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&a.fields.Status==='대기');
+
+    document.getElementById('modal-content').innerHTML=
+      sec('기본 정보')+
+      row('티켓번호',id)+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
+      row('Source',f.Source)+row('Amount',(f.Amount||'').replace('~',' ~ '))+row('Type',f.GoodwillType)+
+      row('Title',f.Title)+row('Email(CC)',f.EmailCC)+row('상태',f.Status)+row('신청일',fmtDate(f.RequestDate))+
+      sec('상세 내용')+row('Description',f.Description)+
+      sec('첨부파일')+filesHtml+
+      sec('결재 이력')+'<div style="background:#f9f9f9;border-radius:4px;border:1px solid #edebe9">'+apprHtml+'</div>'+
+      (myPending?`<div class="proc-btns" style="margin-top:14px"><button class="btn-approve" onclick="showConfirm(${myPending.id},'승인',${id})">✅ 승인</button><button class="btn-reject" onclick="showConfirm(${myPending.id},'반려',${id})">❌ 반려</button></div>`:'');
+
+    // 파일 다운로드 이벤트
+    document.querySelectorAll('.file-dl-link').forEach(a=>{
+      a.addEventListener('click',async e=>{
+        e.preventDefault();
+        try{
+          const t=await token();
+          const driveId=decodeURIComponent(a.dataset.drive),itemId=decodeURIComponent(a.dataset.id),name=decodeURIComponent(a.dataset.name);
+          const meta=await fetch(GRAPH+'/drives/'+driveId+'/items/'+itemId,{headers:{Authorization:'Bearer '+t}});
+          const mj=await meta.json();
+          const dlUrl=mj['@microsoft.graph.downloadUrl'];
+          if(dlUrl){const anchor=document.createElement('a');anchor.href=dlUrl;anchor.download=name;anchor.click();}
+          else alert('다운로드 URL을 가져올 수 없습니다.');
+        }catch(e){alert('다운로드 오류: '+e.message);}
+      });
+    });
+  }catch(e){document.getElementById('modal-content').innerHTML='<p style="color:#a4262c">오류: '+e.message+'</p>';}
+}
+function closeModal(){document.getElementById('detail-modal').className='';}
+
+// ── Badge ──
+async function checkApprovalBadge(){
+  if(!siteId)return;
+  try{
+    const data=await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=500');
+    const mine=data.value.filter(i=>(i.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&i.fields.Status==='대기');
+    const badge=document.getElementById('appr-badge');
+    if(mine.length){badge.textContent=mine.length;badge.style.display='inline';}
+    else badge.style.display='none';
+  }catch(e){}
+}
+
+// ── Dynamic Loading ──
+let _dynLoadTimer = null;
+let _dynMsgTimer = null;
+let _dynMsgIdx = 0;
+const _dynMsgs = ['Goodwill 데이터 불러오는 중', '결재 정보 확인 중', '신청 목록 로딩 중', '잠시만 기다려주세요'];
+const _dynTimeoutMs = 15000;
+
+function dynLoadStart(msg) {
+  const el = document.getElementById('dyn-loading');
+  const msgEl = document.getElementById('dyn-msg-text');
+  const subEl = document.getElementById('dyn-sub-text');
+  const refreshBtn = document.getElementById('dyn-refresh-btn');
+  if(!el) return;
+  _dynMsgIdx = 0;
+  if(msgEl) msgEl.textContent = msg || _dynMsgs[0];
+  if(subEl) subEl.textContent = '';
+  if(refreshBtn) refreshBtn.style.display = 'none';
+  el.classList.add('show');
+
+  // 메시지 순환
+  _dynMsgTimer = setInterval(() => {
+    _dynMsgIdx = (_dynMsgIdx + 1) % _dynMsgs.length;
+    if(msgEl) msgEl.textContent = _dynMsgs[_dynMsgIdx];
+  }, 2500);
+
+  // 타임아웃 (15초) → 새로고침 버튼 표시
+  _dynLoadTimer = setTimeout(() => {
+    if(subEl) subEl.textContent = 'Goodwill 데이터 로딩이 오래 걸리고 있습니다. 페이지를 새로고침해 주세요.';
+    if(subEl) subEl.style.color = '#a4262c';
+    if(refreshBtn) refreshBtn.style.display = 'inline-block';
+    if(msgEl) msgEl.textContent = '연결이 지연되고 있습니다';
+  }, _dynTimeoutMs);
+}
+
+function dynLoadEnd() {
+  const el = document.getElementById('dyn-loading');
+  if(el) el.classList.remove('show');
+  if(_dynLoadTimer) { clearTimeout(_dynLoadTimer); _dynLoadTimer = null; }
+  if(_dynMsgTimer) { clearInterval(_dynMsgTimer); _dynMsgTimer = null; }
+}
+
+</script>
+</body>
+</html>
