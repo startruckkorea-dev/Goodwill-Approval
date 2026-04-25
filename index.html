@@ -287,17 +287,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
           <input type="text" id="f-title" placeholder="신청 제목">
         </div>
       </div>
-      <div class="form-group" style="margin-bottom:12px">
-        <label>Email (CC) <span class="hint">— 참조 이메일 (여러 명 추가 가능)</span></label>
-        <div id="email-cc-list">
-          <div class="email-row">
-            <input type="email" placeholder="이메일 입력">
-            <button class="btn-sm" onclick="addEmailCC()">+ Add</button>
-            <button class="btn-sm del" onclick="removeEmailCC(this)">× Remove</button>
-          </div>
-        </div>
-        <button class="btn-sm" style="margin-top:4px;width:fit-content" onclick="removeAllEmailCC()">× Remove All</button>
-      </div>
+
 
       <div class="section-title">2. 상세 내용</div>
       <div class="form-group" style="margin-bottom:12px">
@@ -590,13 +580,9 @@ function switchTab(t){
 }
 
 // ── Email CC ──
-function addEmailCC(){
-  const div=document.createElement('div'); div.className='email-row';
-  div.innerHTML='<input type="email" placeholder="이메일 입력"><button class="btn-sm" onclick="addEmailCC()">+ Add</button><button class="btn-sm del" onclick="removeEmailCC(this)">× Remove</button>';
-  document.getElementById('email-cc-list').appendChild(div);
-}
-function removeEmailCC(btn){ const row=btn.closest('.email-row'); if(document.querySelectorAll('#email-cc-list .email-row').length>1)row.remove(); else row.querySelector('input').value=''; }
-function removeAllEmailCC(){ document.querySelectorAll('#email-cc-list .email-row').forEach((r,i)=>{ if(i>0)r.remove(); else r.querySelector('input').value=''; }); }
+
+
+
 
 // ── Description count ──
 function updateDescCount(){ document.getElementById('desc-count').textContent=document.getElementById('f-desc').value.length; }
@@ -818,7 +804,6 @@ function resetForm(){
   document.getElementById('f-title').value='';
   document.getElementById('f-desc').value='';
   document.getElementById('desc-count').textContent='0';
-  removeAllEmailCC();
   ['f-main','att1','att2','att3','att4'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('appr-blocks').innerHTML='';
   document.getElementById('line-preview').style.display='none';
