@@ -1012,11 +1012,34 @@ async function showDetail(id){
         try{
           const t=await token();
           const driveId=decodeURIComponent(a.dataset.drive),itemId=decodeURIComponent(a.dataset.id),name=decodeURIComponent(a.dataset.name);
-          const meta=await fetch(GRAPH+'/drives/'+driveId+'/items/'+itemId,{headers:{Authorization:'Bearer '+t}});
+          // @microsoft.graph.downloadUrl 명시적 요청
+          const meta=await fetch(GRAPH+'/drives/'+driveId+'/items/'+itemId+'?select=id,name,%40microsoft.graph.downloadUrl',{headers:{Authorization:'Bearer '+t}});
           const mj=await meta.json();
           const dlUrl=mj['@microsoft.graph.downloadUrl'];
-          if(dlUrl){const anchor=document.createElement('a');anchor.href=dlUrl;anchor.download=name;anchor.click();}
-          else alert('다운로드 URL을 가져올 수 없습니다.');
+          if(dlUrl){
+            const anchor=document.createElement('a');
+            anchor.href=dlUrl;
+            anchor.download=name;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+          } else {
+            // fallback: 브라우저에서 직접 열기
+            const viewRes=await fetch(GRAPH+'/drives/'+driveId+'/items/'+itemId+'/content',{headers:{Authorization:'Bearer '+t}});
+            if(viewRes.ok){
+              const blob=await viewRes.blob();
+              const url=URL.createObjectURL(blob);
+              const anchor=document.createElement('a');
+              anchor.href=url;
+              anchor.download=name;
+              document.body.appendChild(anchor);
+              anchor.click();
+              document.body.removeChild(anchor);
+              setTimeout(()=>URL.revokeObjectURL(url),1000);
+            } else {
+              alert('다운로드 URL을 가져올 수 없습니다. SharePoint에서 직접 확인해주세요.');
+            }
+          }
         }catch(e){alert('다운로드 오류: '+e.message);}
       });
     });
