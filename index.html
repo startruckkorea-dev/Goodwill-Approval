@@ -1017,8 +1017,10 @@ async function showDetail(id){
           const itemId=parts.slice(2).join('||');
           return`<div style="padding:4px 0;font-size:.8rem">📎 <a href="#" class="file-dl-link" data-drive="${encodeURIComponent(driveId)}" data-id="${encodeURIComponent(itemId)}" data-name="${encodeURIComponent(name)}" style="color:#0078d4;cursor:pointer">${name}</a></div>`;
         }
-        return`<div style="padding:4px 0;font-size:.8rem;color:#605e5c">📎 ${name}</div>`;
+        // 링크 없는 파일도 클릭 가능하게 (회색으로 표시)
+        return`<div style="padding:4px 0;font-size:.8rem;color:#a19f9d">📎 ${name} <span style="font-size:.65rem">(링크 정보 없음)</span></div>`;
       }).filter(Boolean).join('');
+      console.log('[GW Debug] filesHtml:', filesHtml.substring(0,300));
     }
 
     // 결재 이력
@@ -1047,25 +1049,32 @@ async function showDetail(id){
         e.preventDefault();
         try{
           const t=await token();
-          const driveId=decodeURIComponent(a.dataset.drive),itemId=decodeURIComponent(a.dataset.id),name=decodeURIComponent(a.dataset.name);
-          // blob으로 직접 다운로드 (가장 확실한 방법)
-          const contentRes=await fetch(GRAPH+'/drives/'+driveId+'/items/'+itemId+'/content',{headers:{Authorization:'Bearer '+t}});
-          if(contentRes.ok){
-            const blob=await contentRes.blob();
-            const url=URL.createObjectURL(blob);
+          const driveId=decodeURIComponent(a.dataset.drive);
+          const itemId=decodeURIComponent(a.dataset.id);
+          const fname=decodeURIComponent(a.dataset.name);
+          console.log('[GW DL] driveId:', driveId, 'itemId:', itemId, 'name:', fname);
+          // downloadUrl 방식이 가장 안정적 (파일명 보존)
+          const meta=await fetch(
+            GRAPH+'/drives/'+driveId+'/items/'+itemId+'?select=id,name,%40microsoft.graph.downloadUrl,webUrl',
+            {headers:{Authorization:'Bearer '+t}}
+          );
+          const mj=await meta.json();
+          console.log('[GW DL] meta:', JSON.stringify(mj).substring(0,200));
+          const dlUrl=mj['@microsoft.graph.downloadUrl'];
+          if(dlUrl){
+            // downloadUrl로 직접 다운로드 (파일명 자동 보존)
             const anchor=document.createElement('a');
-            anchor.href=url; anchor.download=name;
-            document.body.appendChild(anchor); anchor.click(); document.body.removeChild(anchor);
-            setTimeout(()=>URL.revokeObjectURL(url),2000);
+            anchor.href=dlUrl;
+            anchor.download=fname;
+            anchor.style.display='none';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+          } else if(mj.webUrl){
+            // webUrl fallback - 새 탭에서 열기
+            window.open(mj.webUrl, '_blank');
           } else {
-            // fallback: downloadUrl 방식
-            const meta=await fetch(GRAPH+'/drives/'+driveId+'/items/'+itemId+'?select=id,name,%40microsoft.graph.downloadUrl,webUrl',{headers:{Authorization:'Bearer '+t}});
-            const mj=await meta.json();
-            const dlUrl=mj['@microsoft.graph.downloadUrl']||mj.webUrl;
-            if(dlUrl){
-              const anchor=document.createElement('a');anchor.href=dlUrl;anchor.download=name;anchor.target='_blank';
-              document.body.appendChild(anchor);anchor.click();document.body.removeChild(anchor);
-            } else { alert('다운로드할 수 없습니다. SharePoint에서 직접 확인해주세요.'); }
+            alert('다운로드 URL을 가져올 수 없습니다. SharePoint에서 직접 확인해주세요.');
           }
         }catch(e){alert('다운로드 오류: '+e.message);}
       });
