@@ -976,7 +976,14 @@ async function showDetail(id){
     // 첨부파일
     let filesHtml='<div style="font-size:.8rem;color:#605e5c">첨부파일 없음</div>';
     if(f.AttachedFiles){
-      filesHtml=f.AttachedFiles.split(';').map(entry=>{
+      // 개행이나 세미콜론 모두 구분자로 처리
+      const rawFiles = f.AttachedFiles.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+      const fileEntries = rawFiles.includes('||') 
+        ? rawFiles.split(/[;\n]+/)  // ; 또는 줄바꿈으로 split
+        : [rawFiles];
+      console.log('[GW Debug] AttachedFiles raw:', JSON.stringify(f.AttachedFiles));
+      console.log('[GW Debug] fileEntries:', fileEntries);
+      filesHtml=fileEntries.map(entry=>{
         if(!entry.trim()) return '';
         const firstSep = entry.indexOf('||');
         if(firstSep < 0) return `<div style="padding:4px 0;font-size:.8rem;color:#605e5c">📎 ${entry}</div>`;
