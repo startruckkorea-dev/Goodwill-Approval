@@ -387,7 +387,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
       <button class="unified-close" onclick="closeUnifiedAppr()">✕</button>
     </div>
     <div class="unified-body" id="unified-body">
-      <div style="text-align:center;padding:32px;color:#605e5c">불러오는 중...</div>
+      
     </div>
   </div>
 </div>
@@ -929,7 +929,7 @@ async function loadAdminList(){
 // ── Detail Modal ──
 async function showDetail(id){
   const modal=document.getElementById('detail-modal');
-  document.getElementById('modal-content').innerHTML='<div style="text-align:center;padding:32px;color:#605e5c">불러오는 중...</div>';
+  document.getElementById('modal-content').innerHTML='';
   modal.className='open';
   try{
     const [r,apprData]=await Promise.all([
@@ -1190,7 +1190,7 @@ async function loadUnifiedBadge() {
 
 async function openUnifiedAppr() {
   document.getElementById('unified-modal').classList.add('open');
-  document.getElementById('unified-body').innerHTML = '<div style="text-align:center;padding:32px;color:#605e5c">불러오는 중...</div>';
+  document.getElementById('unified-body').innerHTML = '';
   await loadUnifiedData();
 }
 function closeUnifiedAppr() {
