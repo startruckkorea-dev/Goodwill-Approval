@@ -520,8 +520,11 @@ async function boot(account){
     siteId=site.id;
     await loadEmployees();
     await checkApprovalBadge();
-    const _adminCheck=(user.email||user.username||'').toLowerCase();
-    if(ADMIN_EMAILS.map(e=>e.toLowerCase()).includes(_adminCheck)||ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((user.username||'').toLowerCase())){
+    const _adminEmails = ADMIN_EMAILS.map(e=>e.toLowerCase());
+    const _userEmail = (user.email||'').toLowerCase();
+    const _userName  = (user.username||'').toLowerCase();
+    const _userUPN   = (user.idTokenClaims?.preferred_username||user.idTokenClaims?.upn||'').toLowerCase();
+    if(_adminEmails.includes(_userEmail)||_adminEmails.includes(_userName)||_adminEmails.includes(_userUPN)){
       document.getElementById('tab-admin-btn').style.display='block';
     }
   } catch(e){ alert('SharePoint 연결 오류: '+e.message); }
