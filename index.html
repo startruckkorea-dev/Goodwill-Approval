@@ -916,7 +916,7 @@ async function processApproval(apprId,action,reqId,comment=''){
       await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'반려'}});
     } else {
       const all=await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=500');
-      const next=all.value.filter(i=>i.fields.RequestID===reqId&&i.fields.Status==='대기(잠김)').sort((a,b)=>a.fields.ApprovalOrder-b.fields.ApprovalOrder);
+      const next=all.value.filter(i=>Number(i.fields.RequestID)===Number(reqId)&&(i.fields.Status||'').trim()==='대기(잠김)').sort((a,b)=>a.fields.ApprovalOrder-b.fields.ApprovalOrder);
       if(next.length) await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+next[0].id,'PATCH',{fields:{Status:'대기'}});
       else await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'승인완료'}});
     }
@@ -1017,7 +1017,7 @@ async function showDetail(id){
     const apprHtml=apprList.map(a=>{
       const af=a.fields;
       const st=af.Status==='대기'?'status-대기':af.Status==='승인'?'status-승인':af.Status==='반려'?'status-반려':'status-대기잠김';
-      return`<div class="appr-item"><div><b>${af.ApprovalOrder}차</b> ${af.ApproverRole||''}<br><span style="font-size:.72rem;color:#605e5c">${af.ApproverName||''} · ${af.ApproverEmail||''}</span>${af.Comment?`<br><span style="font-size:.72rem;color:#a4262c">💬 ${af.Comment}</span>`:''}</div><span class="${st}">${af.Status}</span></div>`;
+      return`<div class="appr-item"><div><b>${af.ApprovalOrder}차</b> ${af.ApproverRole||''}<br><span style="font-size:.72rem;color:#605e5c">${af.ApproverName||''} · ${af.ApproverEmail||''}</span>${af.ApprovalDate?`<br><span style="font-size:.72rem;color:#a19f9d">${fmtDate(af.ApprovalDate)}</span>`:''  }${af.Comment?`<br><span style="font-size:.72rem;background:#fff;border:1px solid #edebe9;border-radius:4px;padding:2px 6px;display:inline-block;margin-top:2px">💬 ${af.Comment}</span>`:''}</div><span class="${st}">${af.Status}</span></div>`;
     }).join('');
 
     // 내 결재 대기 건
