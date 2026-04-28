@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>STK Goodwill Approval</title>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -397,7 +399,13 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
 <div id="detail-modal" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
     <button class="modal-close" onclick="closeModal()">×</button>
-    <div class="modal-title">신청 상세 내용</div>
+    <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>신청 상세 내용</span>
+      <button id="btn-export-pdf" onclick="exportModalPdf()" title="결재내용 통합 PDF 출력" style="display:none;background:#0078d4;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:all .15s" onmouseover="this.style.background='#005a9e'" onmouseout="this.style.background='#0078d4'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        PDF 출력
+      </button>
+    </div>
     <div id="modal-content"></div>
   </div>
 </div>
@@ -963,6 +971,113 @@ async function loadAdminList(){
 }
 
 // ── Detail Modal ──
+async function exportModalPdf() {
+  const btn = document.getElementById('btn-export-pdf');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 생성 중...';
+  btn.disabled = true;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 12;
+    const printW = pageW - margin * 2;
+
+    // 1. 모달 콘텐츠 캡처
+    const contentEl = document.getElementById('modal-content');
+    // 승인/반려 버튼 임시 숨기기
+    const procBtns = contentEl.querySelector('.proc-btns');
+    if(procBtns) procBtns.style.display = 'none';
+
+    const cvs = await html2canvas(contentEl, {
+      scale: 2, useCORS: true, allowTaint: true,
+      backgroundColor: '#ffffff', scrollY: 0, windowWidth: 700
+    });
+    if(procBtns) procBtns.style.display = '';
+
+    const totalH = (cvs.height / cvs.width) * printW;
+    const imgData = cvs.toDataURL('image/jpeg', 0.92);
+    const printableH = pageH - margin * 2;
+    const pages = Math.ceil(totalH / printableH);
+
+    // 헤더
+    pdf.setFillColor(15, 39, 68);
+    pdf.rect(0, 0, pageW, 14, 'F');
+    pdf.setTextColor(255,255,255);
+    pdf.setFontSize(9);
+    pdf.text('STK Goodwill Approval - 신청 #' + (window._currentDetailId||''), margin, 9);
+    pdf.text(new Date().toLocaleDateString('ko-KR'), pageW - margin, 9, { align: 'right' });
+
+    for(let i = 0; i < pages; i++) {
+      if(i > 0) {
+        pdf.addPage();
+        pdf.setFillColor(15,39,68);
+        pdf.rect(0,0,pageW,14,'F');
+        pdf.setTextColor(255,255,255);
+        pdf.setFontSize(9);
+        pdf.text('STK Goodwill Approval - 신청 #' + (window._currentDetailId||''), margin, 9);
+        pdf.text((i+1) + '/' + pages + ' 페이지', pageW-margin, 9, { align:'right' });
+      }
+      const srcY = i * printableH;
+      const sliceH = Math.min(printableH, totalH - srcY);
+      pdf.addImage(imgData, 'JPEG', margin, 15 - srcY, printW, totalH, 'p'+i, 'FAST');
+      // 위/아래 덮기
+      pdf.setFillColor(255,255,255);
+      pdf.rect(0, 0, pageW, 15, 'F');
+      pdf.rect(0, 15 + sliceH, pageW, pageH, 'F');
+      pdf.rect(0, 0, margin, pageH, 'F');
+      pdf.rect(pageW-margin, 0, margin, pageH, 'F');
+    }
+
+    // 2. 첨부파일 이미지 페이지 추가
+    const fileLinks = contentEl.querySelectorAll('.file-dl-link');
+    for(const link of fileLinks) {
+      const name = decodeURIComponent(link.dataset.name || '');
+      const ext = name.split('.').pop().toLowerCase();
+      if(!['jpg','jpeg','png','gif','webp'].includes(ext)) continue;
+      try {
+        const dId = decodeURIComponent(link.dataset.drive||'');
+        const iId = decodeURIComponent(link.dataset.id||'');
+        const t = await token();
+        const res = await fetch(
+          'https://graph.microsoft.com/v1.0/drives/' + dId + '/items/' + iId + '/content',
+          { headers: { Authorization: 'Bearer ' + t } }
+        );
+        if(!res.ok) continue;
+        const blob = await res.blob();
+        const dataUrl = await new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+        pdf.addPage();
+        pdf.setFillColor(15,39,68); pdf.rect(0,0,pageW,14,'F');
+        pdf.setTextColor(255,255,255); pdf.setFontSize(9);
+        pdf.text('첨부파일: ' + name, margin, 9);
+        const imgEl = new Image();
+        imgEl.src = dataUrl;
+        await new Promise(r => { imgEl.onload = r; imgEl.onerror = r; });
+        const iW = imgEl.naturalWidth || 800;
+        const iH = imgEl.naturalHeight || 600;
+        const ratio = Math.min((pageW-margin*2)/iW, (pageH-20)/iH);
+        pdf.addImage(dataUrl, ext.toUpperCase()==='JPG'?'JPEG':ext.toUpperCase(), margin, 18, iW*ratio, iH*ratio);
+      } catch(e) { console.warn('첨부파일 PDF 추가 실패:', name, e.message); }
+    }
+
+    const f = window._currentDetailFields;
+    const reqEmail = (f?.RequesterEmail||'unknown').replace(/[^a-z0-9]/gi,'_');
+    pdf.save('GW_' + (window._currentDetailId||'req') + '_' + reqEmail + '_' + new Date().toISOString().substring(0,10) + '.pdf');
+
+  } catch(e) {
+    alert('PDF 생성 오류: ' + e.message);
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+
 async function showDetail(id){
   const modal=document.getElementById('detail-modal');
   document.getElementById('modal-content').innerHTML='';
@@ -1044,6 +1159,10 @@ async function showDetail(id){
     // 내 결재 대기 건
     const myPending=apprList.find(a=>(a.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&a.fields.Status==='대기');
 
+    window._currentDetailId = id;
+    window._currentDetailFields = f;
+    const pdfBtn = document.getElementById('btn-export-pdf');
+    if(pdfBtn) pdfBtn.style.display = 'flex';
     document.getElementById('modal-content').innerHTML=
       sec('기본 정보')+
       row('티켓번호',id)+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
@@ -1092,7 +1211,10 @@ async function showDetail(id){
     });
   }catch(e){document.getElementById('modal-content').innerHTML='<p style="color:#a4262c">오류: '+e.message+'</p>';}
 }
-function closeModal(){document.getElementById('detail-modal').className='';}
+function closeModal(){
+  const pdfBtn = document.getElementById('btn-export-pdf');
+  if(pdfBtn) pdfBtn.style.display = 'none';
+  window._currentDetailId = null;document.getElementById('detail-modal').className='';}
 
 // ── Badge ──
 async function checkApprovalBadge(){
