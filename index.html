@@ -987,15 +987,12 @@ async function exportModalPdf() {
     const _bannerNow = new Date();
     const _ds = '출력일시: ' + _bannerNow.toLocaleDateString('ko-KR') + ' ' + _bannerNow.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
 
-    const banner = document.createElement('div');
-    banner.style.cssText = 'background:linear-gradient(90deg,#0f2744,#0a4a8a);color:#fff;padding:7px 14px;border-radius:8px;font-size:.78rem;font-weight:500;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;';
-    banner.innerHTML = '<span>📄 결재 내역 증빙 자료 · STK Goodwill Approval</span><span style="opacity:.75">' + _ds + '</span>';
-    contentEl.insertBefore(banner, contentEl.firstChild);
+    const banner = null; // 헤더에 이미 출력일시 포함
     const procBtns = contentEl.querySelector('.proc-btns');
     if(procBtns) procBtns.style.display = 'none';
 
     const cvs = await html2canvas(contentEl, {scale:2,useCORS:true,allowTaint:true,backgroundColor:'#fff',scrollY:0,windowWidth:700});
-    banner.remove();
+    if(banner) banner.remove();
     if(procBtns) procBtns.style.display = '';
 
     // ── 2. pdf-lib 메인 문서 생성 ──
