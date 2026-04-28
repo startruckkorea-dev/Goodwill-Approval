@@ -987,6 +987,12 @@ async function exportModalPdf() {
 
     // 1. 모달 콘텐츠 캡처
     const contentEl = document.getElementById('modal-content');
+    // 출력일시 배너 임시 삽입
+    const printBanner = document.createElement('div');
+    printBanner.id = 'print-banner-tmp';
+    printBanner.style.cssText = 'background:linear-gradient(90deg,#0f2744,#0a4a8a);color:#fff;padding:7px 14px;border-radius:8px;font-size:.78rem;font-weight:500;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;';
+    printBanner.innerHTML = '<span>📄 결재 내역 증빙 자료</span><span style="opacity:.75">' + dateStr + '</span>';
+    contentEl.insertBefore(printBanner, contentEl.firstChild);
     // 승인/반려 버튼 임시 숨기기
     const procBtns = contentEl.querySelector('.proc-btns');
     if(procBtns) procBtns.style.display = 'none';
@@ -996,6 +1002,7 @@ async function exportModalPdf() {
       backgroundColor: '#ffffff', scrollY: 0, windowWidth: 700
     });
     if(procBtns) procBtns.style.display = '';
+    if(printBanner) printBanner.remove();
 
     const totalH = (cvs.height / cvs.width) * printW;
     const imgData = cvs.toDataURL('image/jpeg', 0.92);
