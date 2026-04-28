@@ -1070,70 +1070,93 @@ async function exportModalPdf() {
     }
 
     // 2. 첨부파일 이미지 페이지 추가
+    // 모든 첨부파일 → Graph API PDF 변환 후 조합
     const fileLinks = contentEl.querySelectorAll('.file-dl-link');
-    for(const link of fileLinks) {
-      const name = decodeURIComponent(link.dataset.name || '');
-      const ext = name.split('.').pop().toLowerCase();
-      if(!['jpg','jpeg','png','gif','webp'].includes(ext)) continue;
-      try {
-        const dId = decodeURIComponent(link.dataset.drive||'');
-        const iId = decodeURIComponent(link.dataset.id||'');
-        const t = await token();
-        const res = await fetch(
-          'https://graph.microsoft.com/v1.0/drives/' + dId + '/items/' + iId + '/content',
-          { headers: { Authorization: 'Bearer ' + t } }
-        );
-        if(!res.ok) continue;
-        const blob = await res.blob();
-        const dataUrl = await new Promise(resolve => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.readAsDataURL(blob);
-        });
-        pdf.addPage();
-        const aHImg = makeHeaderImg('첨부파일: ' + name, dateStr);
-        pdf.addImage(aHImg, 'PNG', 0, 0, pageW, 8);
-        const imgEl = new Image();
-        imgEl.src = dataUrl;
-        await new Promise(r => { imgEl.onload = r; imgEl.onerror = r; });
-        const iW = imgEl.naturalWidth || 800;
-        const iH = imgEl.naturalHeight || 600;
-        const ratio = Math.min((pageW-margin*2)/iW, (pageH-20)/iH);
-        pdf.addImage(dataUrl, ext.toUpperCase()==='JPG'?'JPEG':ext.toUpperCase(), margin, 12, iW*ratio, iH*ratio);
-      } catch(e) { console.warn('첨부파일 PDF 추가 실패:', name, e.message); }
-    }
+    const _t = await token();
 
-    // 비이미지 첨부파일 목록 페이지 추가 (Excel/PPT/PDF 등)
-    const nonImgFiles = [];
     for(const link of fileLinks){
-      const name = decodeURIComponent(link.getAttribute('data-name') || link.dataset.name || '');
+      const name = decodeURIComponent(link.dataset.name || '');
+      if(!name) continue;
+      const dId = decodeURIComponent(link.dataset.drive || '');
+      const iId = decodeURIComponent(link.dataset.id || '');
+      if(!dId || !iId) continue;
+
       const ext = name.split('.').pop().toLowerCase();
-      if(!['jpg','jpeg','png','gif','webp'].includes(ext) && name) nonImgFiles.push(name);
-    }
-    if(nonImgFiles.length > 0){
+      const imgExts = ['jpg','jpeg','png','gif','webp'];
+
       pdf.addPage();
-      const nlHImg = makeHeaderImg('첨부파일 목록 (Excel/PPT/PDF 등)', _bannerDateStr||_ds);
-      pdf.addImage(nlHImg,'PNG',0,0,pageW,8);
-      // Canvas로 목록 그리기 (한글 깨짐 방지)
-      const lc = document.createElement('canvas');
-      lc.width = 900; lc.height = 60 + nonImgFiles.length * 50;
-      const lx = lc.getContext('2d');
-      lx.fillStyle='#ffffff'; lx.fillRect(0,0,lc.width,lc.height);
-      lx.font='600 20px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
-      lx.fillStyle='#1e293b'; lx.fillText('첨부파일 목록', 16, 32);
-      lx.font='400 17px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
-      nonImgFiles.forEach((name,i)=>{
-        const y = 62 + i*46;
-        lx.fillStyle='#f8fafc'; lx.fillRect(8,y-22,lc.width-16,38);
-        lx.strokeStyle='#e2e8f0'; lx.lineWidth=1; lx.strokeRect(8,y-22,lc.width-16,38);
-        lx.fillStyle='#334155'; lx.fillText('📎  '+name, 18, y);
-      });
-      const lImg = lc.toDataURL('image/png');
-      pdf.addImage(lImg,'PNG',margin,12,printW,(lc.height/lc.width)*printW);
+      const ah = makeHeaderImg('첨부파일: ' + name, dateStr);
+      pdf.addImage(ah, 'PNG', 0, 0, pageW, 8);
+
+      try {
+        let fetchUrl, isImg = imgExts.includes(ext);
+
+        if(isImg){
+          // 이미지: 직접 fetch
+          fetchUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content';
+        } else {
+          // Office/PDF 등: Graph API format=pdf 변환
+          fetchUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content?format=pdf';
+        }
+
+        const res = await fetch(fetchUrl, { headers: { Authorization: 'Bearer ' + _t } });
+        if(!res.ok) throw new Error(res.status + ' ' + res.statusText);
+        const blob = await res.blob();
+
+        if(isImg){
+          // 이미지 표시
+          const dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+          const imgEl = new Image(); imgEl.src = dataUrl;
+          await new Promise(r => { imgEl.onload = r; imgEl.onerror = r; });
+          const iW = imgEl.naturalWidth || 800, iH = imgEl.naturalHeight || 600;
+          const ratio = Math.min((pageW-margin*2)/iW, (pageH-20)/iH);
+          pdf.addImage(dataUrl, ext.toUpperCase()==='JPG'?'JPEG':ext.toUpperCase(), margin, 12, iW*ratio, iH*ratio);
+
+        } else {
+          // PDF를 iframe에 렌더링 후 html2canvas로 캡처
+          const objUrl = URL.createObjectURL(blob);
+          const iframe = document.createElement('iframe');
+          iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:860px;height:1150px;border:none;background:#fff;';
+          iframe.src = objUrl;
+          document.body.appendChild(iframe);
+          await new Promise(r => setTimeout(r, 3000));
+          try {
+            const target = iframe.contentDocument?.body || iframe.contentDocument?.documentElement;
+            if(!target) throw new Error('iframe 내용 없음');
+            const iCvs = await html2canvas(target, {
+              scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: '#fff',
+              width: 860, scrollY: 0
+            });
+            const iData = iCvs.toDataURL('image/jpeg', 0.88);
+            const totalH = (iCvs.height / iCvs.width) * printW;
+            const ph = pageH - margin * 2;
+            const pages2 = Math.ceil(totalH / ph);
+            for(let pi = 0; pi < pages2; pi++){
+              if(pi > 0) { pdf.addPage(); pdf.addImage(ah,'PNG',0,0,pageW,8); }
+              const sy = pi * ph;
+              const sh = Math.min(ph, totalH - sy);
+              pdf.addImage(iData,'JPEG',margin,9-sy,printW,totalH,'cvt'+name+pi,'FAST');
+              pdf.setFillColor(255,255,255);
+              pdf.rect(0,0,pageW,9,'F'); pdf.rect(0,9+sh,pageW,pageH,'F');
+              pdf.rect(0,0,margin,pageH,'F'); pdf.rect(pageW-margin,0,margin,pageH,'F');
+            }
+          } finally {
+            iframe.remove(); URL.revokeObjectURL(objUrl);
+          }
+        }
+      } catch(e) {
+        console.warn('첨부파일 변환 실패:', name, e.message);
+        // 실패 시 파일명만 Canvas로 표시
+        const ec = document.createElement('canvas'); ec.width=800; ec.height=90;
+        const ex = ec.getContext('2d');
+        ex.fillStyle='#fff7ed'; ex.fillRect(0,0,ec.width,ec.height);
+        ex.strokeStyle='#fbbf24'; ex.lineWidth=1.5; ex.strokeRect(1,1,ec.width-2,ec.height-2);
+        ex.font='400 16px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+        ex.fillStyle='#92400e'; ex.fillText('⚠  ' + name + '  —  변환 실패 (' + e.message + ')', 16, 50);
+        pdf.addImage(ec.toDataURL('image/png'),'PNG',margin,12,printW,18);
+      }
     }
 
-    const f = window._currentDetailFields;
-    const reqEmail = (f?.RequesterEmail||'unknown').replace(/[^a-z0-9]/gi,'_');
     pdf.save('GW_' + (window._currentDetailId||'req') + '_' + reqEmail + '_' + new Date().toISOString().substring(0,10) + '.pdf');
 
   } catch(e) {
