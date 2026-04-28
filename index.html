@@ -1103,6 +1103,35 @@ async function exportModalPdf() {
       } catch(e) { console.warn('첨부파일 PDF 추가 실패:', name, e.message); }
     }
 
+    // 비이미지 첨부파일 목록 페이지 추가 (Excel/PPT/PDF 등)
+    const nonImgFiles = [];
+    for(const link of fileLinks){
+      const name = decodeURIComponent(link.getAttribute('data-name') || link.dataset.name || '');
+      const ext = name.split('.').pop().toLowerCase();
+      if(!['jpg','jpeg','png','gif','webp'].includes(ext) && name) nonImgFiles.push(name);
+    }
+    if(nonImgFiles.length > 0){
+      pdf.addPage();
+      const nlHImg = makeHeaderImg('첨부파일 목록 (Excel/PPT/PDF 등)', _bannerDateStr||_ds);
+      pdf.addImage(nlHImg,'PNG',0,0,pageW,8);
+      // Canvas로 목록 그리기 (한글 깨짐 방지)
+      const lc = document.createElement('canvas');
+      lc.width = 900; lc.height = 60 + nonImgFiles.length * 50;
+      const lx = lc.getContext('2d');
+      lx.fillStyle='#ffffff'; lx.fillRect(0,0,lc.width,lc.height);
+      lx.font='600 20px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+      lx.fillStyle='#1e293b'; lx.fillText('첨부파일 목록', 16, 32);
+      lx.font='400 17px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+      nonImgFiles.forEach((name,i)=>{
+        const y = 62 + i*46;
+        lx.fillStyle='#f8fafc'; lx.fillRect(8,y-22,lc.width-16,38);
+        lx.strokeStyle='#e2e8f0'; lx.lineWidth=1; lx.strokeRect(8,y-22,lc.width-16,38);
+        lx.fillStyle='#334155'; lx.fillText('📎  '+name, 18, y);
+      });
+      const lImg = lc.toDataURL('image/png');
+      pdf.addImage(lImg,'PNG',margin,12,printW,(lc.height/lc.width)*printW);
+    }
+
     const f = window._currentDetailFields;
     const reqEmail = (f?.RequesterEmail||'unknown').replace(/[^a-z0-9]/gi,'_');
     pdf.save('GW_' + (window._currentDetailId||'req') + '_' + reqEmail + '_' + new Date().toISOString().substring(0,10) + '.pdf');
