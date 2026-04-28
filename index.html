@@ -1005,18 +1005,27 @@ async function exportModalPdf() {
     // 헤더 이미지 생성 (한글 깨짐 방지 - Canvas로 그려서 이미지화)
     function makeHeaderImg(leftText, rightText) {
       const hc = document.createElement('canvas');
-      hc.width = 1190; hc.height = 56;
+      hc.width = 1190; hc.height = 30;
       const hctx = hc.getContext('2d');
-      hctx.fillStyle = '#0f2744';
+      // 그라데이션 배경
+      const grad = hctx.createLinearGradient(0,0,hc.width,0);
+      grad.addColorStop(0, '#0f2744');
+      grad.addColorStop(1, '#0a4a8a');
+      hctx.fillStyle = grad;
       hctx.fillRect(0, 0, hc.width, hc.height);
+      // 하단 얇은 라인
+      hctx.fillStyle = '#3b82f6';
+      hctx.fillRect(0, hc.height-2, hc.width, 2);
+      // 왼쪽 텍스트
       hctx.fillStyle = '#ffffff';
-      hctx.font = '600 22px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+      hctx.font = '500 13px "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif';
       hctx.textBaseline = 'middle';
-      hctx.fillText(leftText, 28, 28);
+      hctx.fillText(leftText, 16, 14);
+      // 오른쪽 텍스트
       hctx.textAlign = 'right';
-      hctx.font = '400 20px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
-      hctx.fillStyle = 'rgba(255,255,255,0.75)';
-      hctx.fillText(rightText, hc.width - 28, 28);
+      hctx.font = '400 12px "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif';
+      hctx.fillStyle = 'rgba(255,255,255,0.6)';
+      hctx.fillText(rightText, hc.width - 16, 14);
       return hc.toDataURL('image/png');
     }
 
@@ -1027,7 +1036,7 @@ async function exportModalPdf() {
     );
 
     // 첫 페이지 헤더
-    pdf.addImage(headerImg, 'PNG', 0, 0, pageW, 14);
+    pdf.addImage(headerImg, 'PNG', 0, 0, pageW, 8);
 
     for(let i = 0; i < pages; i++) {
       if(i > 0) {
@@ -1036,15 +1045,15 @@ async function exportModalPdf() {
           'STK Goodwill Approval  ·  신청 #' + (window._currentDetailId||''),
           (i+1) + ' / ' + pages + ' 페이지'
         );
-        pdf.addImage(hImg, 'PNG', 0, 0, pageW, 14);
+        pdf.addImage(hImg, 'PNG', 0, 0, pageW, 8);
       }
       const srcY = i * printableH;
       const sliceH = Math.min(printableH, totalH - srcY);
-      pdf.addImage(imgData, 'JPEG', margin, 15 - srcY, printW, totalH, 'p'+i, 'FAST');
+      pdf.addImage(imgData, 'JPEG', margin, 9 - srcY, printW, totalH, 'p'+i, 'FAST');
       // 위/아래 덮기
       pdf.setFillColor(255,255,255);
-      pdf.rect(0, 0, pageW, 15, 'F');
-      pdf.rect(0, 15 + sliceH, pageW, pageH, 'F');
+      pdf.rect(0, 0, pageW, 9, 'F');
+      pdf.rect(0, 9 + sliceH, pageW, pageH, 'F');
       pdf.rect(0, 0, margin, pageH, 'F');
       pdf.rect(pageW-margin, 0, margin, pageH, 'F');
     }
@@ -1072,14 +1081,14 @@ async function exportModalPdf() {
         });
         pdf.addPage();
         const aHImg = makeHeaderImg('첨부파일: ' + name, dateStr);
-        pdf.addImage(aHImg, 'PNG', 0, 0, pageW, 14);
+        pdf.addImage(aHImg, 'PNG', 0, 0, pageW, 8);
         const imgEl = new Image();
         imgEl.src = dataUrl;
         await new Promise(r => { imgEl.onload = r; imgEl.onerror = r; });
         const iW = imgEl.naturalWidth || 800;
         const iH = imgEl.naturalHeight || 600;
         const ratio = Math.min((pageW-margin*2)/iW, (pageH-20)/iH);
-        pdf.addImage(dataUrl, ext.toUpperCase()==='JPG'?'JPEG':ext.toUpperCase(), margin, 18, iW*ratio, iH*ratio);
+        pdf.addImage(dataUrl, ext.toUpperCase()==='JPG'?'JPEG':ext.toUpperCase(), margin, 12, iW*ratio, iH*ratio);
       } catch(e) { console.warn('첨부파일 PDF 추가 실패:', name, e.message); }
     }
 
