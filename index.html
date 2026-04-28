@@ -10,14 +10,14 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 /* Login */
-#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
-.login-card{background:#fff;border-radius:8px;padding:40px 48px;text-align:center;box-shadow:0 2px 16px rgba(0,0,0,.1);max-width:380px;width:100%}
-.login-logo{font-size:2rem;margin-bottom:12px}
-.login-title{font-size:1.2rem;font-weight:700;color:#323130;margin-bottom:6px}
+
+
+
+
 .login-sub{font-size:.8rem;color:#605e5c;margin-bottom:28px}
-.btn-login{background:#0078d4;color:#fff;border:none;border-radius:4px;padding:10px 28px;font-size:.95rem;cursor:pointer;width:100%}
-.btn-login:hover{background:#106ebe}
-#login-err{color:#a4262c;font-size:.78rem;margin-top:10px;display:none}
+
+
+
 /* App */
 #app{display:none;max-width:960px;margin:0 auto;padding:24px 16px 48px}
 .app-header{background:#fff;border-radius:8px;padding:18px 24px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.08)}
@@ -189,6 +189,16 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
 .unified-table .btn-approve, .unified-table .btn-reject {
   width:60px; text-align:center; padding:4px 0;
 }
+/* ── Login ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(145deg,#1a3a1a 0%,#16a34a 100%)}
+.login-card{background:#fff;border-radius:20px;padding:52px 48px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.22);max-width:400px;width:100%}
+.login-logo{width:64px;height:64px;background:linear-gradient(135deg,#16a34a,#4ade80);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.7rem;margin:0 auto 20px;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.login-title{font-size:1.2rem;font-weight:700;color:#0f2744;margin-bottom:4px}
+.login-co{font-size:.82rem;color:#94a3b8;margin-bottom:28px}
+.btn-login{background:linear-gradient(135deg,#0078d4,#005a9e);color:#fff;border:none;border-radius:10px;padding:13px 0;font-size:.92rem;font-weight:600;cursor:pointer;width:100%;font-family:inherit;transition:all .2s}
+.btn-login:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,120,212,.4)}
+.btn-login:disabled{background:#cbd5e0;cursor:not-allowed;transform:none;box-shadow:none}
+#login-err{color:#e53e3e;font-size:.78rem;margin-top:10px;display:none}
 </style>
 </head>
 <body>
@@ -196,10 +206,10 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
 <!-- Login -->
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-logo">📋</div>
-    <div class="login-title">STK Goodwill Approval</div>
-    <div class="login-sub">Goodwill / Tech-Care / CCR / Courtesy<br>결재 시스템</div>
-    <button class="btn-login" onclick="signIn()">Microsoft 계정으로 로그인</button>
+    <div class="login-logo">🤝</div>
+    <div class="login-title">Goodwill Approval</div>
+    <div class="login-co">STK Korea Goodwill 결재 시스템</div>
+    <button class="btn-login" id="btn-login" disabled>로딩 중...</button>
     <div id="login-err"></div>
   </div>
 </div>
