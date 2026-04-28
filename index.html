@@ -1029,7 +1029,8 @@ async function exportModalPdf() {
       return hc.toDataURL('image/png');
     }
 
-    const dateStr = new Date().toLocaleDateString('ko-KR');
+    const now = new Date();
+    const dateStr = '출력일시: ' + now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
     const headerImg = makeHeaderImg(
       'STK Goodwill Approval  ·  신청 #' + (window._currentDetailId||''),
       dateStr
