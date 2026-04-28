@@ -976,222 +976,175 @@ async function loadAdminList(){
 async function exportModalPdf() {
   const btn = document.getElementById('btn-export-pdf');
   const orig = btn.innerHTML;
-  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 생성 중...';
-  btn.disabled = true;
+  btn.innerHTML = '⏳ 생성 중...'; btn.disabled = true;
+  window._mergedPdfDoc = null;
 
   try {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 12;
-    const printW = pageW - margin * 2;
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
 
-    // 1. 모달 콘텐츠 캡처
+    // ── 1. 결재 내용 캡처 (html2canvas → 이미지) ──
     const contentEl = document.getElementById('modal-content');
-    // 출력일시 배너 임시 삽입
     const _bannerNow = new Date();
-    const _bannerDateStr = '출력일시: ' + _bannerNow.toLocaleDateString('ko-KR') + ' ' + _bannerNow.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
-    const printBanner = document.createElement('div');
-    printBanner.id = 'print-banner-tmp';
-    printBanner.style.cssText = 'background:linear-gradient(90deg,#0f2744,#0a4a8a);color:#fff;padding:7px 14px;border-radius:8px;font-size:.78rem;font-weight:500;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;';
-    printBanner.innerHTML = '<span>📄 결재 내역 증빙 자료</span><span style="opacity:.75">' + _bannerDateStr + '</span>';
-    contentEl.insertBefore(printBanner, contentEl.firstChild);
-    // 승인/반려 버튼 임시 숨기기
+    const _ds = '출력일시: ' + _bannerNow.toLocaleDateString('ko-KR') + ' ' + _bannerNow.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:linear-gradient(90deg,#0f2744,#0a4a8a);color:#fff;padding:7px 14px;border-radius:8px;font-size:.78rem;font-weight:500;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;';
+    banner.innerHTML = '<span>📄 결재 내역 증빙 자료 · STK Goodwill Approval</span><span style="opacity:.75">' + _ds + '</span>';
+    contentEl.insertBefore(banner, contentEl.firstChild);
     const procBtns = contentEl.querySelector('.proc-btns');
     if(procBtns) procBtns.style.display = 'none';
 
-    const cvs = await html2canvas(contentEl, {
-      scale: 2, useCORS: true, allowTaint: true,
-      backgroundColor: '#ffffff', scrollY: 0, windowWidth: 700
-    });
+    const cvs = await html2canvas(contentEl, {scale:2,useCORS:true,allowTaint:true,backgroundColor:'#fff',scrollY:0,windowWidth:700});
+    banner.remove();
     if(procBtns) procBtns.style.display = '';
-    if(printBanner) printBanner.remove();
 
-    const totalH = (cvs.height / cvs.width) * printW;
-    const imgData = cvs.toDataURL('image/jpeg', 0.92);
-    const printableH = pageH - margin * 2;
-    const pages = Math.ceil(totalH / printableH);
+    // ── 2. pdf-lib 메인 문서 생성 ──
+    const mainDoc = await PDFDocument.create();
 
-    // 헤더 이미지 생성 (한글 깨짐 방지 - Canvas로 그려서 이미지화)
-    function makeHeaderImg(leftText, rightText) {
+    // 헤더 PNG 생성 함수
+    function makeHdrPng(left, right) {
       const hc = document.createElement('canvas');
-      hc.width = 1190; hc.height = 30;
-      const hctx = hc.getContext('2d');
-      // 그라데이션 배경
-      const grad = hctx.createLinearGradient(0,0,hc.width,0);
-      grad.addColorStop(0, '#0f2744');
-      grad.addColorStop(1, '#0a4a8a');
-      hctx.fillStyle = grad;
-      hctx.fillRect(0, 0, hc.width, hc.height);
-      // 하단 얇은 라인
-      hctx.fillStyle = '#3b82f6';
-      hctx.fillRect(0, hc.height-2, hc.width, 2);
-      // 왼쪽 텍스트
-      hctx.fillStyle = '#ffffff';
-      hctx.font = '500 13px "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif';
-      hctx.textBaseline = 'middle';
-      hctx.fillText(leftText, 16, 14);
-      // 오른쪽 텍스트
-      hctx.textAlign = 'right';
-      hctx.font = '400 12px "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif';
-      hctx.fillStyle = 'rgba(255,255,255,0.6)';
-      hctx.fillText(rightText, hc.width - 16, 14);
+      hc.width = 1190; hc.height = 28;
+      const hx = hc.getContext('2d');
+      const g = hx.createLinearGradient(0,0,hc.width,0);
+      g.addColorStop(0,'#0f2744'); g.addColorStop(1,'#0a4a8a');
+      hx.fillStyle=g; hx.fillRect(0,0,hc.width,hc.height);
+      hx.fillStyle='#3b82f6'; hx.fillRect(0,hc.height-2,hc.width,2);
+      hx.fillStyle='#fff';
+      hx.font='500 13px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+      hx.textBaseline='middle'; hx.fillText(left,14,13);
+      hx.textAlign='right'; hx.font='400 12px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+      hx.fillStyle='rgba(255,255,255,.6)'; hx.fillText(right,hc.width-14,13);
       return hc.toDataURL('image/png');
     }
 
-    const now = new Date();
-    const dateStr = '출력일시: ' + now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
-    const headerImg = makeHeaderImg(
-      'STK Goodwill Approval  ·  신청 #' + (window._currentDetailId||''),
-      dateStr
-    );
-
-    // 첫 페이지 헤더
-    pdf.addImage(headerImg, 'PNG', 0, 0, pageW, 8);
-
-    for(let i = 0; i < pages; i++) {
-      if(i > 0) {
-        pdf.addPage();
-        const hImg = makeHeaderImg(
-          'STK Goodwill Approval  ·  신청 #' + (window._currentDetailId||''),
-          (i+1) + ' / ' + pages + ' 페이지'
-        );
-        pdf.addImage(hImg, 'PNG', 0, 0, pageW, 8);
-      }
-      const srcY = i * printableH;
-      const sliceH = Math.min(printableH, totalH - srcY);
-      pdf.addImage(imgData, 'JPEG', margin, 9 - srcY, printW, totalH, 'p'+i, 'FAST');
-      // 위/아래 덮기
-      pdf.setFillColor(255,255,255);
-      pdf.rect(0, 0, pageW, 9, 'F');
-      pdf.rect(0, 9 + sliceH, pageW, pageH, 'F');
-      pdf.rect(0, 0, margin, pageH, 'F');
-      pdf.rect(pageW-margin, 0, margin, pageH, 'F');
+    // 이미지 데이터를 Uint8Array로 변환
+    async function dataUrlToUint8(dataUrl) {
+      const res = await fetch(dataUrl);
+      const ab = await res.arrayBuffer();
+      return new Uint8Array(ab);
     }
 
-    // 2. 첨부파일 이미지 페이지 추가
-    // 모든 첨부파일 → Graph API PDF 변환 후 pdf-lib로 직접 병합
+    // 결재 내용 이미지를 A4 페이지들로 분할 추가
+    const A4W = 595, A4H = 842;
+    const marginPt = 34, hdrH = 22;
+    const printW_pt = A4W - marginPt*2;
+    const contentImgData = cvs.toDataURL('image/jpeg', 0.92);
+    const contentBytes = await dataUrlToUint8(contentImgData);
+    const contentImg = await mainDoc.embedJpg(contentBytes);
+    const totalImgH = (contentImg.height / contentImg.width) * printW_pt;
+    const printableH_pt = A4H - marginPt*2 - hdrH;
+    const numPages = Math.ceil(totalImgH / printableH_pt);
+
+    const hdrDataUrl = makeHdrPng('STK Goodwill Approval · 결재 내역 증빙 자료', _ds);
+    const hdrBytes = await dataUrlToUint8(hdrDataUrl);
+
+    for(let i = 0; i < numPages; i++) {
+      const page = mainDoc.addPage([A4W, A4H]);
+      const hdrImg = await mainDoc.embedPng(hdrBytes);
+      page.drawImage(hdrImg, {x:0, y:A4H-hdrH, width:A4W, height:hdrH});
+      const srcY = i * printableH_pt;
+      const sliceH = Math.min(printableH_pt, totalImgH - srcY);
+      page.drawImage(contentImg, {
+        x: marginPt,
+        y: A4H - hdrH - marginPt - sliceH,
+        width: printW_pt,
+        height: sliceH,
+        // 이미지의 해당 구간만 표시
+        xSkew: 0, ySkew: 0
+      });
+    }
+
+    // ── 3. 첨부파일 처리 ──
     const fileLinks = contentEl.querySelectorAll('.file-dl-link');
     const _t = await token();
-    const { PDFDocument } = PDFLib;
 
-    for(const link of fileLinks){
+    for(const link of fileLinks) {
       const name = decodeURIComponent(link.dataset.name || '');
       if(!name) continue;
       const dId = decodeURIComponent(link.dataset.drive || '');
       const iId = decodeURIComponent(link.dataset.id || '');
       if(!dId || !iId) continue;
-
       const ext = name.split('.').pop().toLowerCase();
       const imgExts = ['jpg','jpeg','png','gif','webp'];
 
-      pdf.addPage();
-      const ah = makeHeaderImg('첨부파일: ' + name, dateStr);
-      pdf.addImage(ah, 'PNG', 0, 0, pageW, 8);
+      btn.innerHTML = '⏳ ' + name.substring(0,20) + '...';
 
       try {
-        let fetchUrl, isImg = imgExts.includes(ext);
+        let pdfBytes = null;
 
-        if(isImg){
-          // 이미지: 직접 fetch
-          fetchUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content';
-        } else if(ext === 'pdf'){
-          // PDF: 직접 fetch (format=pdf 변환 불필요, 406 방지)
-          fetchUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content';
-        } else {
-          // Office (Excel/PPT/Word): Graph API format=pdf 변환
-          fetchUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content?format=pdf';
-        }
-
-        const res = await fetch(fetchUrl, { headers: { Authorization: 'Bearer ' + _t } });
-        if(!res.ok) throw new Error(res.status + ' ' + res.statusText);
-        const blob = await res.blob();
-
-        if(isImg){
-          // 이미지 표시
-          const dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
-          const imgEl = new Image(); imgEl.src = dataUrl;
-          await new Promise(r => { imgEl.onload = r; imgEl.onerror = r; });
-          const iW = imgEl.naturalWidth || 800, iH = imgEl.naturalHeight || 600;
-          const ratio = Math.min((pageW-margin*2)/iW, (pageH-20)/iH);
-          pdf.addImage(dataUrl, ext.toUpperCase()==='JPG'?'JPEG':ext.toUpperCase(), margin, 12, iW*ratio, iH*ratio);
+        if(imgExts.includes(ext)) {
+          // 이미지: 직접 fetch → 새 페이지에 삽입
+          const res = await fetch('https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content', {headers:{Authorization:'Bearer '+_t}});
+          if(!res.ok) throw new Error(res.status);
+          const imgAb = await res.arrayBuffer();
+          const attachPage = mainDoc.addPage([A4W, A4H]);
+          const aHdr = await mainDoc.embedPng(hdrBytes);
+          const aHdrFn = makeHdrPng('첨부파일: '+name, _ds);
+          const aHdrBytes = await dataUrlToUint8(aHdrFn);
+          const aHdrImg = await mainDoc.embedPng(aHdrBytes);
+          attachPage.drawImage(aHdrImg, {x:0, y:A4H-hdrH, width:A4W, height:hdrH});
+          let embImg;
+          if(['jpg','jpeg'].includes(ext)) embImg = await mainDoc.embedJpg(new Uint8Array(imgAb));
+          else embImg = await mainDoc.embedPng(new Uint8Array(imgAb));
+          const {width:iW, height:iH} = embImg;
+          const ratio = Math.min(printW_pt/iW, (A4H-hdrH-marginPt*2)/iH);
+          attachPage.drawImage(embImg, {
+            x: marginPt,
+            y: A4H - hdrH - marginPt - iH*ratio,
+            width: iW*ratio, height: iH*ratio
+          });
 
         } else {
-          // Office/PDF: pdf-lib로 직접 병합
-          // 이미 blob은 PDF 형식으로 변환됨 (format=pdf) 또는 원본 PDF
-          const pdfAb = await blob.arrayBuffer();
-          try {
-            const srcDoc = await PDFDocument.load(pdfAb, { ignoreEncryption: true });
-            const srcPages = srcDoc.getPageCount();
+          // Office/PDF: Graph API PDF 변환
+          const convertUrl = ext === 'pdf'
+            ? 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content'
+            : 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content?format=pdf';
+          const res = await fetch(convertUrl, {headers:{Authorization:'Bearer '+_t}});
+          if(!res.ok) throw new Error('변환실패 '+res.status);
+          pdfBytes = new Uint8Array(await res.arrayBuffer());
 
-            // 현재 jsPDF를 ArrayBuffer로 추출 후 pdf-lib로 병합
-            const mainPdfAb = pdf.output('arraybuffer');
-            const mainDoc = await PDFDocument.load(mainPdfAb);
+          // 변환된 PDF를 mainDoc에 병합
+          const srcDoc = await PDFDocument.load(pdfBytes, {ignoreEncryption:true});
+          const copiedPages = await mainDoc.copyPages(srcDoc, srcDoc.getPageIndices());
 
-            // 헤더 이미지를 각 페이지에 추가하기 위해 srcDoc 페이지들을 mainDoc에 복사
-            const copiedPages = await mainDoc.copyPages(srcDoc, srcDoc.getPageIndices());
+          const aHdrFn2 = makeHdrPng('첨부파일: '+name, _ds);
+          const aHdrBytes2 = await dataUrlToUint8(aHdrFn2);
 
-            // 헤더 이미지 (PNG) embed
-            const hdrImgData = makeHeaderImg('첨부파일: ' + name, dateStr);
-            const hdrBlob2 = await (await fetch(hdrImgData)).blob();
-            const hdrAb = await hdrBlob2.arrayBuffer();
-            const hdrImg = await mainDoc.embedPng(hdrAb);
-
-            for(const page of copiedPages){
-              mainDoc.addPage(page);
-              // 헤더 바 추가
-              const {width, height} = page.getSize();
-              page.drawImage(hdrImg, {
-                x: 0, y: height - 22,
-                width: width, height: 22
-              });
-            }
-
-            // 병합된 PDF를 다시 jsPDF 호환 형태로 저장
-            const mergedPdfBytes = await mainDoc.save();
-            // pdf-lib 결과를 최종 export용으로 저장 (jsPDF 대신 pdf-lib 사용)
-            window._mergedPdfDoc = mainDoc;
-            // jsPDF에 빈 페이지 추가 (srcPages 개수만큼 - 페이지 추적용)
-            for(let pi = 1; pi < srcPages; pi++) pdf.addPage();
-          } catch(mergeErr) {
-            console.warn('pdf-lib 병합 실패:', mergeErr.message);
-            throw mergeErr;
+          for(const pg of copiedPages) {
+            mainDoc.addPage(pg);
+            // 헤더 오버레이
+            const aHdrImg2 = await mainDoc.embedPng(aHdrBytes2);
+            const {width:pgW, height:pgH} = pg.getSize();
+            pg.drawImage(aHdrImg2, {x:0, y:pgH-hdrH, width:pgW, height:hdrH});
           }
         }
       } catch(e) {
-        console.warn('첨부파일 변환 실패:', name, e.message);
-        // 실패 시 파일명만 Canvas로 표시
-        const ec = document.createElement('canvas'); ec.width=800; ec.height=90;
-        const ex = ec.getContext('2d');
-        ex.fillStyle='#fff7ed'; ex.fillRect(0,0,ec.width,ec.height);
-        ex.strokeStyle='#fbbf24'; ex.lineWidth=1.5; ex.strokeRect(1,1,ec.width-2,ec.height-2);
-        ex.font='400 16px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
-        ex.fillStyle='#92400e'; ex.fillText('⚠  ' + name + '  —  변환 실패 (' + e.message + ')', 16, 50);
-        pdf.addImage(ec.toDataURL('image/png'),'PNG',margin,12,printW,18);
+        console.warn('첨부파일 처리 실패:', name, e.message);
+        // 실패 시 오류 페이지 추가
+        const errPage = mainDoc.addPage([A4W, A4H]);
+        const aHdrFn3 = makeHdrPng('첨부파일: '+name+' (변환 실패)', _ds);
+        const aHdrBytes3 = await dataUrlToUint8(aHdrFn3);
+        const aHdrImg3 = await mainDoc.embedPng(aHdrBytes3);
+        errPage.drawImage(aHdrImg3, {x:0, y:A4H-hdrH, width:A4W, height:hdrH});
       }
     }
 
+    // ── 4. 최종 저장 ──
+    const finalBytes = await mainDoc.save();
+    const finalBlob = new Blob([finalBytes], {type:'application/pdf'});
     const _f = window._currentDetailFields;
     const reqEmail = (_f?.RequesterEmail||'unknown').replace(/[^a-z0-9]/gi,'_');
-    const saveFileName = 'GW_' + (window._currentDetailId||'req') + '_' + reqEmail + '_' + new Date().toISOString().substring(0,10) + '.pdf';
-
-    // pdf-lib 병합 결과가 있으면 그걸로, 없으면 jsPDF 결과 사용
-    if(window._mergedPdfDoc) {
-      const finalBytes = await window._mergedPdfDoc.save();
-      const finalBlob = new Blob([finalBytes], {type:'application/pdf'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(finalBlob);
-      a.download = saveFileName;
-      document.body.appendChild(a); a.click();
-      setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
-      window._mergedPdfDoc = null;
-    } else {
-      pdf.save(saveFileName);
-    }
+    const saveFileName = 'GW_'+(window._currentDetailId||'req')+'_'+reqEmail+'_'+new Date().toISOString().substring(0,10)+'.pdf';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(finalBlob);
+    a.download = saveFileName;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
 
   } catch(e) {
     alert('PDF 생성 오류: ' + e.message);
+    console.error(e);
   } finally {
     btn.innerHTML = orig;
     btn.disabled = false;
