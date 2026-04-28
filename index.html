@@ -1092,26 +1092,8 @@ async function exportModalPdf() {
 
         } else {
           // Office/PDF: Graph API PDF 변환
-          // PDF 파일은 병합 제외 (이미 PDF인 파일은 별도 첨부로 처리)
-          if(ext === 'pdf') {
-            const errPage = mainDoc.addPage([A4W, A4H]);
-            const skFn = makeHdrPng('첨부파일: '+name+' (PDF - 별도 확인)', _ds);
-            const skBytes = await dataUrlToUint8(skFn);
-            const skImg = await mainDoc.embedPng(skBytes);
-            errPage.drawImage(skImg, {x:0, y:A4H-hdrH, width:A4W, height:hdrH});
-            // 파일명 안내 텍스트 (Canvas로)
-            const nc = document.createElement('canvas'); nc.width=800; nc.height=120;
-            const nx = nc.getContext('2d');
-            nx.fillStyle='#f8fafc'; nx.fillRect(0,0,nc.width,nc.height);
-            nx.font='500 18px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
-            nx.fillStyle='#334155'; nx.fillText('📎  '+name, 20, 50);
-            nx.font='400 14px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
-            nx.fillStyle='#94a3b8'; nx.fillText('이 파일은 PDF 형식으로 별도 첨부되어 있습니다.', 20, 80);
-            const nBytes = await dataUrlToUint8(nc.toDataURL('image/png'));
-            const nImg = await mainDoc.embedPng(nBytes);
-            errPage.drawImage(nImg, {x:marginPt, y:A4H-hdrH-marginPt-90, width:printW_pt, height:90});
-            continue;
-          }
+          // PDF 파일은 스킵 (내용 자체가 이미 PDF라 병합 불필요)
+          if(ext === 'pdf') continue;
           const convertUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content?format=pdf';
           const res = await fetch(convertUrl, {headers:{Authorization:'Bearer '+_t}});
           if(!res.ok) throw new Error('변환실패 '+res.status);
