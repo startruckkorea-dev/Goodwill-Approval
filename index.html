@@ -1002,23 +1002,41 @@ async function exportModalPdf() {
     const printableH = pageH - margin * 2;
     const pages = Math.ceil(totalH / printableH);
 
-    // 헤더
-    pdf.setFillColor(15, 39, 68);
-    pdf.rect(0, 0, pageW, 14, 'F');
-    pdf.setTextColor(255,255,255);
-    pdf.setFontSize(9);
-    pdf.text('STK Goodwill Approval - 신청 #' + (window._currentDetailId||''), margin, 9);
-    pdf.text(new Date().toLocaleDateString('ko-KR'), pageW - margin, 9, { align: 'right' });
+    // 헤더 이미지 생성 (한글 깨짐 방지 - Canvas로 그려서 이미지화)
+    function makeHeaderImg(leftText, rightText) {
+      const hc = document.createElement('canvas');
+      hc.width = 1190; hc.height = 56;
+      const hctx = hc.getContext('2d');
+      hctx.fillStyle = '#0f2744';
+      hctx.fillRect(0, 0, hc.width, hc.height);
+      hctx.fillStyle = '#ffffff';
+      hctx.font = '600 22px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+      hctx.textBaseline = 'middle';
+      hctx.fillText(leftText, 28, 28);
+      hctx.textAlign = 'right';
+      hctx.font = '400 20px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+      hctx.fillStyle = 'rgba(255,255,255,0.75)';
+      hctx.fillText(rightText, hc.width - 28, 28);
+      return hc.toDataURL('image/png');
+    }
+
+    const dateStr = new Date().toLocaleDateString('ko-KR');
+    const headerImg = makeHeaderImg(
+      'STK Goodwill Approval  ·  신청 #' + (window._currentDetailId||''),
+      dateStr
+    );
+
+    // 첫 페이지 헤더
+    pdf.addImage(headerImg, 'PNG', 0, 0, pageW, 14);
 
     for(let i = 0; i < pages; i++) {
       if(i > 0) {
         pdf.addPage();
-        pdf.setFillColor(15,39,68);
-        pdf.rect(0,0,pageW,14,'F');
-        pdf.setTextColor(255,255,255);
-        pdf.setFontSize(9);
-        pdf.text('STK Goodwill Approval - 신청 #' + (window._currentDetailId||''), margin, 9);
-        pdf.text((i+1) + '/' + pages + ' 페이지', pageW-margin, 9, { align:'right' });
+        const hImg = makeHeaderImg(
+          'STK Goodwill Approval  ·  신청 #' + (window._currentDetailId||''),
+          (i+1) + ' / ' + pages + ' 페이지'
+        );
+        pdf.addImage(hImg, 'PNG', 0, 0, pageW, 14);
       }
       const srcY = i * printableH;
       const sliceH = Math.min(printableH, totalH - srcY);
@@ -1053,9 +1071,8 @@ async function exportModalPdf() {
           reader.readAsDataURL(blob);
         });
         pdf.addPage();
-        pdf.setFillColor(15,39,68); pdf.rect(0,0,pageW,14,'F');
-        pdf.setTextColor(255,255,255); pdf.setFontSize(9);
-        pdf.text('첨부파일: ' + name, margin, 9);
+        const aHImg = makeHeaderImg('첨부파일: ' + name, dateStr);
+        pdf.addImage(aHImg, 'PNG', 0, 0, pageW, 14);
         const imgEl = new Image();
         imgEl.src = dataUrl;
         await new Promise(r => { imgEl.onload = r; imgEl.onerror = r; });
