@@ -1094,8 +1094,11 @@ async function exportModalPdf() {
         if(isImg){
           // 이미지: 직접 fetch
           fetchUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content';
+        } else if(ext === 'pdf'){
+          // PDF: 직접 fetch (format=pdf 변환 불필요, 406 방지)
+          fetchUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content';
         } else {
-          // Office/PDF 등: Graph API format=pdf 변환
+          // Office (Excel/PPT/Word): Graph API format=pdf 변환
           fetchUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content?format=pdf';
         }
 
@@ -1157,6 +1160,8 @@ async function exportModalPdf() {
       }
     }
 
+    const _f = window._currentDetailFields;
+    const reqEmail = (_f?.RequesterEmail||'unknown').replace(/[^a-z0-9]/gi,'_');
     pdf.save('GW_' + (window._currentDetailId||'req') + '_' + reqEmail + '_' + new Date().toISOString().substring(0,10) + '.pdf');
 
   } catch(e) {
