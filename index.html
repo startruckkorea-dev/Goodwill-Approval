@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1070,9 +1071,10 @@ async function exportModalPdf() {
     }
 
     // 2. 첨부파일 이미지 페이지 추가
-    // 모든 첨부파일 → Graph API PDF 변환 후 조합
+    // 모든 첨부파일 → Graph API PDF 변환 후 pdf-lib로 직접 병합
     const fileLinks = contentEl.querySelectorAll('.file-dl-link');
     const _t = await token();
+    const { PDFDocument } = PDFLib;
 
     for(const link of fileLinks){
       const name = decodeURIComponent(link.dataset.name || '');
@@ -1116,35 +1118,45 @@ async function exportModalPdf() {
           pdf.addImage(dataUrl, ext.toUpperCase()==='JPG'?'JPEG':ext.toUpperCase(), margin, 12, iW*ratio, iH*ratio);
 
         } else {
-          // PDF를 iframe에 렌더링 후 html2canvas로 캡처
-          const objUrl = URL.createObjectURL(blob);
-          const iframe = document.createElement('iframe');
-          iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:860px;height:1150px;border:none;background:#fff;';
-          iframe.src = objUrl;
-          document.body.appendChild(iframe);
-          await new Promise(r => setTimeout(r, 3000));
+          // Office/PDF: pdf-lib로 직접 병합
+          // 이미 blob은 PDF 형식으로 변환됨 (format=pdf) 또는 원본 PDF
+          const pdfAb = await blob.arrayBuffer();
           try {
-            const target = iframe.contentDocument?.body || iframe.contentDocument?.documentElement;
-            if(!target) throw new Error('iframe 내용 없음');
-            const iCvs = await html2canvas(target, {
-              scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: '#fff',
-              width: 860, scrollY: 0
-            });
-            const iData = iCvs.toDataURL('image/jpeg', 0.88);
-            const totalH = (iCvs.height / iCvs.width) * printW;
-            const ph = pageH - margin * 2;
-            const pages2 = Math.ceil(totalH / ph);
-            for(let pi = 0; pi < pages2; pi++){
-              if(pi > 0) { pdf.addPage(); pdf.addImage(ah,'PNG',0,0,pageW,8); }
-              const sy = pi * ph;
-              const sh = Math.min(ph, totalH - sy);
-              pdf.addImage(iData,'JPEG',margin,9-sy,printW,totalH,'cvt'+name+pi,'FAST');
-              pdf.setFillColor(255,255,255);
-              pdf.rect(0,0,pageW,9,'F'); pdf.rect(0,9+sh,pageW,pageH,'F');
-              pdf.rect(0,0,margin,pageH,'F'); pdf.rect(pageW-margin,0,margin,pageH,'F');
+            const srcDoc = await PDFDocument.load(pdfAb, { ignoreEncryption: true });
+            const srcPages = srcDoc.getPageCount();
+
+            // 현재 jsPDF를 ArrayBuffer로 추출 후 pdf-lib로 병합
+            const mainPdfAb = pdf.output('arraybuffer');
+            const mainDoc = await PDFDocument.load(mainPdfAb);
+
+            // 헤더 이미지를 각 페이지에 추가하기 위해 srcDoc 페이지들을 mainDoc에 복사
+            const copiedPages = await mainDoc.copyPages(srcDoc, srcDoc.getPageIndices());
+
+            // 헤더 이미지 (PNG) embed
+            const hdrImgData = makeHeaderImg('첨부파일: ' + name, dateStr);
+            const hdrBlob2 = await (await fetch(hdrImgData)).blob();
+            const hdrAb = await hdrBlob2.arrayBuffer();
+            const hdrImg = await mainDoc.embedPng(hdrAb);
+
+            for(const page of copiedPages){
+              mainDoc.addPage(page);
+              // 헤더 바 추가
+              const {width, height} = page.getSize();
+              page.drawImage(hdrImg, {
+                x: 0, y: height - 22,
+                width: width, height: 22
+              });
             }
-          } finally {
-            iframe.remove(); URL.revokeObjectURL(objUrl);
+
+            // 병합된 PDF를 다시 jsPDF 호환 형태로 저장
+            const mergedPdfBytes = await mainDoc.save();
+            // pdf-lib 결과를 최종 export용으로 저장 (jsPDF 대신 pdf-lib 사용)
+            window._mergedPdfDoc = mainDoc;
+            // jsPDF에 빈 페이지 추가 (srcPages 개수만큼 - 페이지 추적용)
+            for(let pi = 1; pi < srcPages; pi++) pdf.addPage();
+          } catch(mergeErr) {
+            console.warn('pdf-lib 병합 실패:', mergeErr.message);
+            throw mergeErr;
           }
         }
       } catch(e) {
@@ -1162,7 +1174,21 @@ async function exportModalPdf() {
 
     const _f = window._currentDetailFields;
     const reqEmail = (_f?.RequesterEmail||'unknown').replace(/[^a-z0-9]/gi,'_');
-    pdf.save('GW_' + (window._currentDetailId||'req') + '_' + reqEmail + '_' + new Date().toISOString().substring(0,10) + '.pdf');
+    const saveFileName = 'GW_' + (window._currentDetailId||'req') + '_' + reqEmail + '_' + new Date().toISOString().substring(0,10) + '.pdf';
+
+    // pdf-lib 병합 결과가 있으면 그걸로, 없으면 jsPDF 결과 사용
+    if(window._mergedPdfDoc) {
+      const finalBytes = await window._mergedPdfDoc.save();
+      const finalBlob = new Blob([finalBytes], {type:'application/pdf'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(finalBlob);
+      a.download = saveFileName;
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+      window._mergedPdfDoc = null;
+    } else {
+      pdf.save(saveFileName);
+    }
 
   } catch(e) {
     alert('PDF 생성 오류: ' + e.message);
