@@ -1023,15 +1023,16 @@ async function exportModalPdf() {
     }
 
     // 결재 내용 이미지를 A4 페이지들로 분할 추가
+    // pdf-lib은 이미지 크롭 불가 → canvas로 직접 슬라이싱
     const A4W = 595, A4H = 842;
     const marginPt = 34, hdrH = 22;
     const printW_pt = A4W - marginPt*2;
-    const contentImgData = cvs.toDataURL('image/jpeg', 0.92);
-    const contentBytes = await dataUrlToUint8(contentImgData);
-    const contentImg = await mainDoc.embedJpg(contentBytes);
-    const totalImgH = (contentImg.height / contentImg.width) * printW_pt;
     const printableH_pt = A4H - marginPt*2 - hdrH;
-    const numPages = Math.ceil(totalImgH / printableH_pt);
+
+    // canvas 픽셀 기준: 1pt = cvs.width / A4W 픽셀
+    const pxPerPt = cvs.width / A4W;
+    const sliceH_px = Math.round(printableH_pt * pxPerPt); // 한 페이지에 들어갈 픽셀 높이
+    const numPages = Math.ceil(cvs.height / sliceH_px);
 
     const hdrDataUrl = makeHdrPng('STK Goodwill Approval · 결재 내역 증빙 자료', _ds);
     const hdrBytes = await dataUrlToUint8(hdrDataUrl);
@@ -1040,13 +1041,26 @@ async function exportModalPdf() {
       const page = mainDoc.addPage([A4W, A4H]);
       const hdrImg = await mainDoc.embedPng(hdrBytes);
       page.drawImage(hdrImg, {x:0, y:A4H-hdrH, width:A4W, height:hdrH});
-      const srcY = i * printableH_pt;
-      const sliceH = Math.min(printableH_pt, totalImgH - srcY);
-      page.drawImage(contentImg, {
+
+      // 해당 페이지 영역만 canvas에서 잘라내기
+      const srcY = i * sliceH_px;
+      const sliceActual_px = Math.min(sliceH_px, cvs.height - srcY);
+      const sliceActual_pt = sliceActual_px / pxPerPt;
+
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = cvs.width;
+      sliceCanvas.height = sliceActual_px;
+      sliceCanvas.getContext('2d').drawImage(cvs, 0, srcY, cvs.width, sliceActual_px, 0, 0, cvs.width, sliceActual_px);
+
+      const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+      const sliceBytes = await dataUrlToUint8(sliceData);
+      const sliceImg = await mainDoc.embedJpg(sliceBytes);
+
+      page.drawImage(sliceImg, {
         x: marginPt,
-        y: A4H - hdrH - marginPt - sliceH,
+        y: A4H - hdrH - marginPt - sliceActual_pt,
         width: printW_pt,
-        height: sliceH
+        height: sliceActual_pt
       });
     }
 
