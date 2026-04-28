@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤝</text></svg>">
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>STK Goodwill Approval</title>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
@@ -1141,10 +1142,8 @@ async function showDetail(id){
       cleanFiles = cleanFiles.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&#58;/g,':');
       // 개행 정리
       cleanFiles = cleanFiles.replace(/\r\n/g,'\n').replace(/\r/g,'\n').trim();
-      console.log('[GW Debug] cleanFiles:', JSON.stringify(cleanFiles.substring(0,200)));
       // ; 또는 줄바꿈으로 split
       const fileEntries = cleanFiles.split(/[;\n]+/).filter(e=>e.trim()&&e.includes('||'));
-      console.log('[GW Debug] fileEntries count:', fileEntries.length, fileEntries);
       filesHtml=fileEntries.map(entry=>{
         if(!entry.trim()) return '';
         const firstSep = entry.indexOf('||');
@@ -1182,7 +1181,6 @@ async function showDetail(id){
         // 링크 없는 파일도 클릭 가능하게 (회색으로 표시)
         return`<div style="padding:4px 0;font-size:.8rem;color:#a19f9d">📎 ${name} <span style="font-size:.65rem">(링크 정보 없음)</span></div>`;
       }).filter(Boolean).join('');
-      console.log('[GW Debug] filesHtml:', filesHtml.substring(0,300));
     }
 
     // 결재 이력
