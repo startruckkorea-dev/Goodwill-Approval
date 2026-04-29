@@ -1105,10 +1105,10 @@ async function exportModalPdf() {
           });
 
         } else {
-          // Office/PDF: Graph API PDF 변환
-          // PDF 파일은 스킵 (내용 자체가 이미 PDF라 병합 불필요)
-          if(ext === 'pdf') continue;
-          const convertUrl = 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content?format=pdf';
+          // Office/PDF: Graph API PDF 변환 (PDF는 그대로, Office는 변환)
+          const convertUrl = ext === 'pdf'
+            ? 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content'
+            : 'https://graph.microsoft.com/v1.0/drives/'+dId+'/items/'+iId+'/content?format=pdf';
           const res = await fetch(convertUrl, {headers:{Authorization:'Bearer '+_t}});
           if(!res.ok) throw new Error('변환실패 '+res.status);
           pdfBytes = new Uint8Array(await res.arrayBuffer());
