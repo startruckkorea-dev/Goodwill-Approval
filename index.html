@@ -723,13 +723,13 @@ function renderApproverBlocks(source, amount){
 
     if(role==='CTRL'){
       div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— Controlling (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="Jungho Yoo" readonly><input type="email" value="jungho.yoo@hyosung.com" readonly></div>`;
+        <div class="appr-info"><input type="text" value="${CONTROLLING.name}" readonly><input type="email" value="${CONTROLLING.email}" readonly></div>`;
     } else if(role==='CFO_'){
       div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CFO (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="Martin Schindele" readonly><input type="email" value="martin.s.schindele@hyosung.com" readonly></div>`;
+        <div class="appr-info"><input type="text" value="${CFO.name}" readonly><input type="email" value="${CFO.email}" readonly></div>`;
     } else if(role==='CEO_'){
       div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CEO (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="Antonio Randazzo" readonly><input type="email" value="antonio.randazzo@hyosung.com" readonly></div>`;
+        <div class="appr-info"><input type="text" value="${CEO.name}" readonly><input type="email" value="${CEO.email}" readonly></div>`;
     } else {
       const label=ROLE_LABELS[role]||role;
       div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="req-mark">*</span> <span class="hint">— ${label}</span></div>
