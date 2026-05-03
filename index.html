@@ -590,7 +590,7 @@ async function boot(account){
     const _cfg = await loadSystemConfig();
     if (_cfg) {
       const _contact = cfgVal(_cfg,'GW_CONTACT',cfgVal(_cfg,'CONTACT_EMAIL',{email:''}));
-      document.querySelectorAll('.sub,.subtitle').forEach(el=>{if(el.textContent.includes('@'))el.textContent='문의 Email: '+_contact.email;});
+      const _gwCEl=document.getElementById('gw-contact-email');if(_gwCEl)_gwCEl.textContent='문의 Email: '+_contact.email;
       const _adminList = cfgEmails(_cfg,['GW_ADMIN_1','ADMIN_SP']);
       if(_adminList.length) ADMIN_EMAILS.splice(0,ADMIN_EMAILS.length,..._adminList);
       Object.assign(CONTROLLING, cfgVal(_cfg,'GW_CONTROLLING',CONTROLLING));
