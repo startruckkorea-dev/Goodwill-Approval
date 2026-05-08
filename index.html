@@ -613,7 +613,7 @@ async function boot(account){
       const _gwSalesEl=document.getElementById('gw-contact-sales');if(_gwSalesEl)_gwSalesEl.textContent='Sales 관련 문의 Email: '+(_gwSales.email||'-');
       const _gwCSPEl  =document.getElementById('gw-contact-csp');  if(_gwCSPEl)  _gwCSPEl.textContent  ='CSP 관련 문의 Email: '  +(_gwCSP.email  ||'-');
       // 관리자: GW_ADMIN_1~5 모두 읽기
-      const _adminList = cfgEmails(_cfg,['GW_ADMIN_1','GW_ADMIN_2','GW_ADMIN_3','GW_ADMIN_4','GW_ADMIN_5','ADMIN_SP']);
+      const _adminList = cfgEmails(_cfg,['GW_ADMIN_1','ADMIN_SP']); // GW_ADMIN_N 패턴 자동 확장 (1~N 무한)
       if(_adminList.length) ADMIN_EMAILS.splice(0,ADMIN_EMAILS.length,..._adminList);
       Object.assign(CONTROLLING, cfgVal(_cfg,'GW_CONTROLLING',CONTROLLING));
       Object.assign(CFO,         cfgVal(_cfg,'GW_CFO',CFO));
