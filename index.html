@@ -830,12 +830,13 @@ async function submitForm(){
     const ccEmails=Array.from(document.querySelectorAll('#email-cc-list input[type="email"]')).map(el=>el.value.trim()).filter(Boolean).join(';');
     const now=new Date().toISOString();
     const fields={
-      Title:title, Company:company, Source:source, Amount:amount,
+      Title:'GW-tmp', Company:company, Source:source, Amount:amount,
       GoodwillType:type, Description:document.getElementById('f-desc').value,
       EmailCC:ccEmails, Status:'대기', RequesterEmail:user.email, RequestDate:now,
     };
     const item=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items','POST',{fields});
     const reqId=parseInt(item.id);
+    await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Title:'GW-'+new Date().toISOString().slice(0,10)+'-'+reqId}});
 
     // 파일 업로드
     const allFiles=[];
