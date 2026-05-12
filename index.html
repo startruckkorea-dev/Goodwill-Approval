@@ -23,7 +23,7 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 
 
 /* App */
-#app{display:none;max-width:960px;margin:0 auto;padding:24px 16px 48px}
+#app{display:none;max-width:1280px;margin:0 auto;padding:24px 20px 48px}
 .app-header{background:#fff;border-radius:8px;padding:18px 24px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .app-title{font-size:1.1rem;font-weight:700;color:#323130}
 .app-sub{font-size:.72rem;color:#605e5c;margin-top:3px}
@@ -87,7 +87,8 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 .btn-secondary{background:#fff;border:1px solid #d2d0ce;border-radius:4px;padding:8px 24px;font-size:.85rem;cursor:pointer;font-family:inherit}
 .btn-secondary:hover{background:#f3f2f1}
 /* List */
-.list-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.list-table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:960px}
+.list-table th,.list-table td{white-space:nowrap}
 .list-table th{padding:9px 12px;text-align:left;background:#f3f2f1;border-bottom:1px solid #edebe9;font-weight:600;color:#323130;font-size:.75rem}
 .list-table td{padding:9px 12px;border-bottom:1px solid #edebe9;color:#323130}
 .list-table tr:hover td{background:#f9f8f7;cursor:pointer}
@@ -353,7 +354,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
 
   <!-- ── 내 신청 목록 ── -->
   <div id="tab-list" style="display:none">
-    <div class="card" style="padding:0;overflow:hidden">
+    <div class="card" style="padding:0;overflow-x:auto">
       <table class="list-table">
         <thead><tr><th>번호</th><th>Source</th><th>Type</th><th>Title</th><th>상태</th><th>신청일</th></tr></thead>
         <tbody id="list-body"><tr><td colspan="6" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
