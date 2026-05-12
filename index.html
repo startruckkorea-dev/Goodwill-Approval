@@ -366,7 +366,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
   <div id="tab-appr" style="display:none">
     <div class="card" style="padding:0;overflow:hidden">
       <table class="list-table">
-        <thead><tr><th>신청번호</th><th>신청자</th><th>Source</th><th>Type</th><th>상태</th><th>신청일</th><th>처리</th></tr></thead>
+        <thead><tr><th>신청번호</th><th>신청자</th><th>Title</th><th>Source</th><th>Type</th><th>상태</th><th>신청일</th><th>처리</th></tr></thead>
         <tbody id="appr-body"><tr><td colspan="7" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
       </table>
     </div>
@@ -393,7 +393,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       <table class="list-table">
-        <thead><tr><th>번호</th><th>신청자</th><th>Source</th><th>Type</th><th>Amount</th><th>상태</th><th>신청일</th></tr></thead>
+        <thead><tr><th>번호</th><th>신청자</th><th>Title</th><th>Source</th><th>Type</th><th>Amount</th><th>상태</th><th>신청일</th></tr></thead>
         <tbody id="admin-body"><tr><td colspan="7" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
       </table>
     </div>
@@ -548,7 +548,7 @@ async function api(path,method='GET',body=null){
   return res.status===204?null:res.json();
 }
 function loading(on){ document.getElementById('loading').className=on?'show':''; }
-function fmtDate(s){ if(!s)return''; const d=new Date(s); return d.getFullYear()+'-'+(d.getMonth()+1+'').padStart(2,'0')+'-'+(d.getDate()+'').padStart(2,'0')+' '+(d.getHours()+'').padStart(2,'0')+':'+(d.getMinutes()+'').padStart(2,'0'); }
+function fmtDate(s){ if(!s)return''; const d=new Date(new Date(s).toLocaleString('en-US',{timeZone:'Asia/Seoul'})); return d.getFullYear()+'-'+(d.getMonth()+1+'').padStart(2,'0')+'-'+(d.getDate()+'').padStart(2,'0')+' '+(d.getHours()+'').padStart(2,'0')+':'+(d.getMinutes()+'').padStart(2,'0'); }
 
 // ── Boot ──
 
@@ -973,11 +973,11 @@ async function loadApprovalQueue(){
     const mine=apprData.value.filter(i=>(i.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&i.fields.Status==='대기').sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
     const rows=mine.map(item=>{
       const f=item.fields,rf=reqMap[String(f.RequestID)]||{};
-      return`<tr><td style="color:#0078d4;cursor:pointer" onclick="showDetail(${f.RequestID})">${f.RequestID}</td><td>${rf.RequesterEmail||''}</td><td><span class="badge-type">${rf.Source||''}</span></td><td>${rf.GoodwillType||''}</td><td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
+      return`<tr><td style="color:#0078d4;cursor:pointer;font-weight:600" onclick="showDetail(${f.RequestID})">${f.RequestID}</td><td style="font-size:.78rem">${rf.RequesterEmail||''}</td><td style="font-size:.78rem;color:#0078d4">${rf.Title||'-'}</td><td><span class="badge-type">${rf.Source||''}</span></td><td>${rf.GoodwillType||''}</td><td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
     });
-    dynLoadEnd(); pgSet('appr',rows,r=>r,'결재 대기 항목이 없습니다.',7);
+    dynLoadEnd(); pgSet('appr',rows,r=>r,'결재 대기 항목이 없습니다.',8);
     const badge=document.getElementById('appr-badge');badge.textContent=mine.length;badge.style.display=mine.length?'inline':'none';
-  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
 }
 
 // ── Process Approval ──
@@ -1051,8 +1051,8 @@ async function loadAdminList(){
     if(status)items=items.filter(i=>i.fields.Status===status);
     if(source)items=items.filter(i=>i.fields.Source===source);
     document.getElementById('admin-count').textContent='총 '+items.length+'건';
-    dynLoadEnd(); pgSet('admin',items,item=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td>${item.id}</td><td>${f.RequesterEmail||''}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td>${(f.Amount||'').replace('~',' ~ ')}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',7);
-  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+    dynLoadEnd(); pgSet('admin',items,item=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#0078d4;font-weight:600">${item.id}</td><td style="font-size:.78rem">${f.RequesterEmail||''}</td><td style="font-size:.78rem;color:#0078d4">${f.Title||'-'}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td>${(f.Amount||'').replace('~',' ~ ')}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',8);
+  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
 }
 
 // ── Detail Modal ──
