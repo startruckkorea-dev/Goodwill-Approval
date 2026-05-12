@@ -356,7 +356,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
   <div id="tab-list" style="display:none">
     <div class="card" style="padding:0;overflow-x:auto">
       <table class="list-table">
-        <thead><tr><th>번호</th><th>Source</th><th>Type</th><th>Title</th><th>상태</th><th>신청일</th></tr></thead>
+        <thead><tr><th>번호</th><th>Title</th><th>Source</th><th>Type</th><th>상태</th><th>신청일</th></tr></thead>
         <tbody id="list-body"><tr><td colspan="6" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
       </table>
     </div>
@@ -365,7 +365,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
 
   <!-- ── 결재함 ── -->
   <div id="tab-appr" style="display:none">
-    <div class="card" style="padding:0;overflow:hidden">
+    <div class="card" style="padding:0;overflow-x:auto">
       <table class="list-table">
         <thead><tr><th>신청번호</th><th>신청자</th><th>Title</th><th>Source</th><th>Type</th><th>상태</th><th>신청일</th><th>처리</th></tr></thead>
         <tbody id="appr-body"><tr><td colspan="7" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
@@ -392,7 +392,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
       </select>
       <span style="font-size:.8rem;color:#605e5c;align-self:center" id="admin-count"></span>
     </div>
-    <div class="card" style="padding:0;overflow:hidden">
+    <div class="card" style="padding:0;overflow-x:auto">
       <table class="list-table">
         <thead><tr><th>번호</th><th>신청자</th><th>Title</th><th>Source</th><th>Type</th><th>Amount</th><th>상태</th><th>신청일</th></tr></thead>
         <tbody id="admin-body"><tr><td colspan="7" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
@@ -688,6 +688,9 @@ function switchTab(t){
     document.getElementById('tab-'+n).style.display=n===t?'block':'none';
     document.getElementById('tab-'+n+'-btn').classList.toggle('active',n===t);
   });
+  // 신청서 작성은 기존 너비, 나머지는 넓은 레이아웃
+  const appEl = document.getElementById('app');
+  if(appEl) appEl.style.maxWidth = t==='form' ? '960px' : '1280px';
   if(t==='list')loadMyList();
   if(t==='appr')loadApprovalQueue();
   if(t==='admin')loadAdminList();
@@ -957,7 +960,7 @@ async function loadMyList(){
   try{
     const data=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500');
     const mine=data.value.filter(i=>(i.fields.RequesterEmail||'').toLowerCase()===(user.email||'').toLowerCase()).sort((a,b)=>b.id-a.id);
-    dynLoadEnd(); pgSet('list',mine,item=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})"><td>${item.id}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td>${f.Title||''}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;}, '신청 내역이 없습니다.', 6);
+    dynLoadEnd(); pgSet('list',mine,item=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#0078d4;font-weight:600">${item.id}</td><td style="font-size:.78rem;color:#0078d4">${f.Title||'-'}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;}, '신청 내역이 없습니다.', 6);
   }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
 }
 
