@@ -125,6 +125,15 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
 /* Loading */
 #loading{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);align-items:center;justify-content:center;z-index:999}
 #loading.show{display:flex}
+/* ── Alert Modal ── */
+#gw-alert-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#gw-alert-modal.show{display:flex}
+.gw-alert-box{background:#fff;border-radius:12px;padding:28px 32px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18);text-align:center}
+.gw-alert-icon{font-size:2rem;margin-bottom:10px}
+.gw-alert-title{font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:6px;line-height:1.6}
+.gw-alert-sub{font-size:.8rem;color:#64748b;margin-bottom:20px;word-break:break-all}
+.gw-alert-btn{background:#0078d4;color:#fff;border:none;border-radius:8px;padding:9px 32px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit}
+.gw-alert-btn:hover{background:#0062b1}
 .loading-box{background:#fff;border-radius:6px;padding:24px 36px;font-size:.9rem;color:#323130;display:flex;flex-direction:column;align-items:center;gap:14px}
 .spinner{width:30px;height:30px;border:3px solid #edebe9;border-top:3px solid #0078d4;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -432,7 +441,16 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
 </div>
 
 <!-- 결재 확인 팝업 -->
-<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:center;justify-content:center">
+<div id="gw-alert-modal">
+  <div class="gw-alert-box">
+    <div class="gw-alert-icon" id="gw-alert-icon">✅</div>
+    <div class="gw-alert-title" id="gw-alert-title"></div>
+    <div class="gw-alert-sub" id="gw-alert-sub"></div>
+    <button class="gw-alert-btn" onclick="document.getElementById('gw-alert-modal').classList.remove('show')">확인</button>
+  </div>
+</div>
+
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:10px;padding:28px 28px 20px;max-width:420px;width:92%;box-shadow:0 4px 24px rgba(0,0,0,.2)">
     <div id="confirm-title" style="font-size:1rem;font-weight:700;color:#323130;margin-bottom:6px"></div>
     <div id="confirm-sub" style="font-size:.78rem;color:#605e5c;margin-bottom:14px"></div>
@@ -908,9 +926,9 @@ async function submitForm(){
         Status:a.order===1?'대기':'대기(잠김)'
       }});
     }
-    alert('✅ 신청이 완료되었습니다! (번호: '+reqId+')');
+    showAlert('신청이 완료되었습니다.', 'GW-'+new Date().toISOString().slice(0,10)+'_ID-'+reqId);
     resetForm(); switchTab('list');
-  }catch(e){alert('오류: '+e.message);}
+  }catch(e){showAlert('오류가 발생했습니다.', e.message, '⚠️');}
   finally{loading(false);}
 }
 
@@ -1012,6 +1030,12 @@ function closeConfirm(){
   document.getElementById('confirm-modal').style.display = 'none';
   _pendingApproval = null;
 }
+function showAlert(title, sub='', icon='✅') {
+  document.getElementById('gw-alert-icon').textContent = icon;
+  document.getElementById('gw-alert-title').textContent = title;
+  document.getElementById('gw-alert-sub').textContent = sub;
+  document.getElementById('gw-alert-modal').classList.add('show');
+}
 
 async function confirmApproval(){
   if(!_pendingApproval) return;
@@ -1040,7 +1064,8 @@ async function processApproval(apprId,action,reqId,comment=''){
       else await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'승인완료'}});
     }
     closeModal(); loadApprovalQueue();
-  }catch(e){alert('오류: '+e.message);}
+    showAlert(action+' 처리되었습니다.', '', action==='반려'?'❌':'✅');
+  }catch(e){showAlert('오류가 발생했습니다.', e.message, '⚠️');}
   finally{loading(false);}
 }
 
