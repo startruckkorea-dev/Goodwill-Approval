@@ -6,6 +6,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>STK Goodwill Approval</title>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js">// cache-bust: 1778597974
+
+function checkSystemStatus(cfg) {
+  const st = cfg && cfg['Status'];
+  if (!st || (st.name||'').trim().toLowerCase() !== 'stk' || (st.email||'').trim().toLowerCase() !== 'ok') {
+    document.getElementById('maintenance-screen').classList.add('show');
+    return false;
+  }
+  return true;
+}
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -224,6 +233,14 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
 .btn-login:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,120,212,.4)}
 .btn-login:disabled{background:#cbd5e0;cursor:not-allowed;transform:none;box-shadow:none}
 #login-err{color:#e53e3e;font-size:.78rem;margin-top:10px;display:none}
+
+/* ── Maintenance Screen ── */
+#maintenance-screen{display:none;position:fixed;inset:0;background:#f1f5f9;z-index:99999;align-items:center;justify-content:center;flex-direction:column;gap:0}
+#maintenance-screen.show{display:flex}
+.maint-box{text-align:center;padding:40px 32px}
+.maint-icon{font-size:3.5rem;margin-bottom:20px;display:block}
+.maint-title{font-size:1.3rem;font-weight:800;color:#1e293b;margin-bottom:10px}
+.maint-sub{font-size:.88rem;color:#64748b;line-height:1.8}
 </style>
 </head>
 <body>
@@ -635,6 +652,7 @@ async function boot(account){
     const site = await api('/sites/'+SITE_PATH);
     siteId=site.id;
     const _cfg = await loadSystemConfig();
+  if(!checkSystemStatus(_cfg)) return;
     if (_cfg) {
       const _contact = cfgVal(_cfg,'GW_CONTACT',cfgVal(_cfg,'CONTACT_EMAIL',{email:''}));
       const _gwCEl=document.getElementById('gw-contact-email');if(_gwCEl)_gwCEl.textContent='문의 Email: '+_contact.email;
@@ -1689,5 +1707,13 @@ async function uniConfirmApproval() {
 }
 
 </script>
+
+<div id="maintenance-screen">
+  <div class="maint-box">
+    <span class="maint-icon">🔧</span>
+    <div class="maint-title">시스템 점검중입니다</div>
+    <div class="maint-sub">현재 시스템 점검 중으로 잠시 후 다시 이용해 주세요.<br>문의사항은 IT 담당자에게 연락해 주세요.</div>
+  </div>
+</div>
 </body>
 </html>
