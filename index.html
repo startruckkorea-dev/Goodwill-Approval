@@ -626,6 +626,7 @@ async function boot(account){
   user=account;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
+  document.getElementById('app').style.maxWidth='960px'; // 신청서 작성 탭 기본 너비
   document.getElementById('user-name').textContent=account.name||account.username;
   try {
     try {
