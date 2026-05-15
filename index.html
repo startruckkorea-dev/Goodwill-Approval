@@ -543,7 +543,7 @@ async function token(){
   try { return (await msal_g.acquireTokenSilent({scopes:SCOPES,account:msal_g.getActiveAccount()})).accessToken; }
   catch(e) {
     if(e.name==='InteractionRequiredAuthError'||(e.errorCode&&e.errorCode.includes('interaction_required'))){
-      const r=await msal_g.acquireTokenPopup({scopes:SCOPES}); msal_g.setActiveAccount(r.account); return r.accessToken;
+      await msal_g.acquireTokenRedirect({scopes:SCOPES}); return null;
     }
     throw e;
   }
