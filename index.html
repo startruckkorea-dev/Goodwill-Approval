@@ -233,7 +233,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
   <div class="login-card">
     <div class="login-logo">🤝</div>
     <div class="login-title">Goodwill Approval</div>
-    <div class="login-co">STK Goodwill 결재 시스템</div>
+    <div class="login-co">STK Korea Goodwill 결재 시스템</div>
     <button class="btn-login" id="btn-login" onclick="signIn()" disabled>로딩 중...</button>
     <div id="login-err"></div>
   </div>
@@ -356,8 +356,8 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
       <div id="appr-blocks"></div>
 
       <div class="btn-row">
-        <button class="btn-secondary" onclick="resetForm()">Reset</button>
-        <button class="btn-primary" onclick="submitForm()">Submit</button>
+        <button class="btn-secondary" onclick="resetForm()">초기화</button>
+        <button class="btn-primary" onclick="submitForm()">제출</button>
       </div>
     </div>
   </div>
@@ -536,44 +536,6 @@ async function signIn() {
     await boot(r.account);
   } catch(e){ showLoginError(e.message); }
 }
-
-// ── 비활동 자동 로그아웃 (12시간) ──────────────────
-const IDLE_TIMEOUT_MS = 12 * 60 * 60 * 1000; // 12시간
-const IDLE_KEY = 'stk_last_active';
-let _idleTimer = null;
-
-function resetIdleTimer() {
-  sessionStorage.setItem(IDLE_KEY, Date.now().toString());
-  if (_idleTimer) clearTimeout(_idleTimer);
-  _idleTimer = setTimeout(() => {
-    alert('장시간 미사용으로 자동 로그아웃됩니다.');
-    if (typeof msalApp !== 'undefined' && msalApp) {
-      sessionStorage.removeItem(IDLE_KEY);
-      msalApp.logoutRedirect();
-    }
-  }, IDLE_TIMEOUT_MS);
-}
-
-function checkIdleOnLoad() {
-  const last = parseInt(sessionStorage.getItem(IDLE_KEY) || '0');
-  if (last && Date.now() - last > IDLE_TIMEOUT_MS) {
-    sessionStorage.removeItem(IDLE_KEY);
-    if (typeof msalApp !== 'undefined' && msalApp) {
-      msalApp.logoutRedirect();
-    }
-    return false;
-  }
-  return true;
-}
-
-function startIdleWatcher() {
-  resetIdleTimer();
-  ['click', 'keydown', 'mousemove', 'touchstart', 'scroll'].forEach(evt =>
-    document.addEventListener(evt, resetIdleTimer, { passive: true })
-  );
-}
-// ────────────────────────────────────────────────────
-
 function signOut(){ msal_g.logoutRedirect(); }
 function showLoginError(msg){ const el=document.getElementById('login-err'); el.textContent=msg; el.style.display='block'; }
 
@@ -661,8 +623,6 @@ function cfgEmails(cfg, keys) {
 }
 
 async function boot(account){
-  if (!checkIdleOnLoad()) return;
-  startIdleWatcher();
   user=account;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
@@ -711,7 +671,7 @@ window.addEventListener('load', async () => {
   try {
     msal_g = new msal.PublicClientApplication({
       auth: { clientId: CLIENT_ID, authority: 'https://login.microsoftonline.com/' + TENANT_ID, redirectUri: window.location.origin + window.location.pathname },
-      cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
     });
     await msal_g.initialize();
     clearTimeout(fallback);
