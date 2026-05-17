@@ -671,7 +671,7 @@ window.addEventListener('load', async () => {
   try {
     msal_g = new msal.PublicClientApplication({
       auth: { clientId: CLIENT_ID, authority: 'https://login.microsoftonline.com/' + TENANT_ID, redirectUri: window.location.origin + window.location.pathname },
-      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+      cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
     });
     await msal_g.initialize();
     clearTimeout(fallback);
