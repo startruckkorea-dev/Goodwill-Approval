@@ -667,7 +667,7 @@ async function boot(account){
 window.addEventListener('load', async () => {
   const btn = document.getElementById('btn-login');
   const fallback = setTimeout(() => {
-    if (btn && btn.disabled) { btn.disabled = false; btn.textContent = 'Microsoft 계정으로 로그인'; }
+    if (btn && btn.disabled) { btn.disabled = false; btn.textContent = 'Hyosung M365 계정으로 로그인'; }
   }, 5000);
   try {
     msal_g = new msal.PublicClientApplication({
@@ -680,10 +680,10 @@ window.addEventListener('load', async () => {
     if (resp) { msal_g.setActiveAccount(resp.account); await boot(resp.account); return; }
     const accounts = msal_g.getAllAccounts();
     if (accounts.length) { msal_g.setActiveAccount(accounts[0]); await boot(accounts[0]); return; }
-    if (btn) { btn.disabled = false; btn.textContent = 'Microsoft 계정으로 로그인'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Hyosung M365 계정으로 로그인'; }
   } catch(e) {
     clearTimeout(fallback);
-    if (btn) { btn.disabled = false; btn.textContent = 'Microsoft 계정으로 로그인'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Hyosung M365 계정으로 로그인'; }
     console.warn('MSAL 초기화 오류:', e.message);
   }
 });
