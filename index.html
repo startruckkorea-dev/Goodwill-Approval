@@ -402,6 +402,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
         <option value="Market Goodwill">Market Goodwill</option>
       </select>
       <span style="font-size:.8rem;color:#605e5c;align-self:center" id="admin-count"></span>
+      <button onclick="exportGWAdminExcel()" style="margin-left:auto;padding:6px 14px;background:#107c10;color:#fff;border:none;border-radius:4px;font-size:.82rem;cursor:pointer;white-space:nowrap">📊 Excel 내보내기</button>
     </div>
     <div class="card" style="padding:0;overflow-x:auto">
       <table class="list-table">
@@ -1072,6 +1073,25 @@ async function processApproval(apprId,action,reqId,comment=''){
 }
 
 // ── Admin List ──
+
+async function exportGWAdminExcel(){
+  loading(true,'Excel 생성 중...');
+  try{
+    const data = await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500');
+    const status = document.getElementById('admin-status').value;
+    let items = data.value.sort((a,b)=>b.id-a.id);
+    if(status) items = items.filter(i=>i.fields.Status===status);
+    if(!items.length){loading(false);alert('내보낼 데이터가 없습니다.');return;}
+    const headers = ['번호','신청자','제목','상태','신청일'];
+    const rows = [headers, ...items.map(i=>{const f=i.fields;return[i.id,f.RequesterEmail||'',f.Title||'',f.Status||'',f.RequestDate?f.RequestDate.slice(0,10):''];})];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Goodwill');
+    XLSX.writeFile(wb, 'Goodwill_Admin_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  }catch(e){alert('Excel 생성 실패: '+e.message);}
+  finally{loading(false);}
+}
+
 async function loadAdminList(){
   const tbody=document.getElementById('admin-body');
   dynLoadStart('Goodwill 데이터 불러오는 중');
