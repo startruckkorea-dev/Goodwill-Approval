@@ -735,6 +735,11 @@ function checkGwFileSize(input){
 }
 
 // ── Approval line builder ──
+function fmtGWAmount(val){
+  if(!val) return '-';
+  return val.replace(/(\d+)/g, n=>Number(n).toLocaleString('ko-KR'));
+}
+
 function getApprovalLine(source, amount){
   const matrix = APPROVAL_MATRIX[source];
   if(!matrix||!amount)return[];
@@ -999,7 +1004,7 @@ async function loadApprovalQueue(){
     const mine=apprData.value.filter(i=>(i.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&i.fields.Status==='대기').sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
     const rows=mine.map(item=>{
       const f=item.fields,rf=reqMap[String(f.RequestID)]||{};
-      return`<tr onclick="showDetail(${f.RequestID})" style="cursor:pointer"><td style="color:#0078d4;font-weight:600">${f.RequestID}</td><td style="font-size:.78rem">${rf.RequesterEmail||''}</td><td style="font-size:.78rem;color:#0078d4">${rf.Title||'-'}</td><td><span class="badge-type">${rf.Source||''}</span></td><td>${rf.GoodwillType||''}</td><td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
+      return`<tr onclick="showDetail(${f.RequestID})" style="cursor:pointer"><td style="color:#0078d4;font-weight:600">${f.RequestID}</td><td style="font-size:.78rem">${rf.RequesterEmail||''}</td><td style="font-size:.78rem;color:#0078d4">${rf.Title||'-'}</td><td><span class="badge-type">${rf.Source||''}</span></td><td>${rf.GoodwillType||''}</td><td style="font-size:.78rem">${fmtGWAmount(rf.Amount)}</td><td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
     });
     dynLoadEnd(); pgSet('appr',rows,r=>r,'결재 대기 항목이 없습니다.',8);
     const badge=document.getElementById('appr-badge');badge.textContent=mine.length;badge.style.display=mine.length?'inline':'none';
@@ -1103,7 +1108,7 @@ async function loadAdminList(){
     if(status)items=items.filter(i=>i.fields.Status===status);
     if(source)items=items.filter(i=>i.fields.Source===source);
     document.getElementById('admin-count').textContent='총 '+items.length+'건';
-    dynLoadEnd(); pgSet('admin',items,item=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#0078d4;font-weight:600">${item.id}</td><td style="font-size:.78rem">${f.RequesterEmail||''}</td><td style="font-size:.78rem;color:#0078d4">${f.Title||'-'}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td>${(f.Amount||'').replace('~',' ~ ')}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',8);
+    dynLoadEnd(); pgSet('admin',items,item=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#0078d4;font-weight:600">${item.id}</td><td style="font-size:.78rem">${f.RequesterEmail||''}</td><td style="font-size:.78rem;color:#0078d4">${f.Title||'-'}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td>${fmtGWAmount(f.Amount)}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',8);
   }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
 }
 
@@ -1380,7 +1385,7 @@ async function showDetail(id){
     document.getElementById('modal-content').innerHTML=
       sec('기본 정보')+
       row('티켓번호',id)+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
-      row('Source',f.Source)+row('Amount',(f.Amount||'').replace('~',' ~ '))+row('Type',f.GoodwillType)+
+      row('Source',f.Source)+row('Amount',fmtGWAmount(f.Amount))+row('Type',f.GoodwillType)+
       row('Title',f.Title)+row('Email(CC)',f.EmailCC)+row('상태',f.Status)+row('신청일',fmtDate(f.RequestDate))+
       sec('상세 내용')+row('Description',f.Description)+
       sec('첨부파일')+filesHtml+
