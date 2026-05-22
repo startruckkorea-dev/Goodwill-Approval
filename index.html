@@ -524,12 +524,13 @@ const APPROVAL_MATRIX = {
 };
 
 const ROLE_LABELS = {
-  CS_TM:'CS Team Manager', TSM:'Technical Service Manager',
-  SP_VP:'S&P VP 2nd', SA1:'Sales Assistant1', SA2:'Sales Assistant2',
+  CS_TM:'CSP Goodwill Admin (자동 지정)', TSM:'Technical Service Manager',
+  SP_VP:'CSP Head (자동 지정)', SA1:'Sales Assistant1', SA2:'Sales Assistant2',
   SD:'Sales Director', CTRL:'Controlling (고정)', CFO_:'CFO (고정)', CEO_:'CEO (고정)',
 };
-const FIXED_ROLES = ['CTRL','CFO_','CEO_'];
-
+const FIXED_ROLES = ['CTRL','CFO_','CEO_','CS_TM','SP_VP'];
+const CSP_ADMIN   = { name:'Dongho Kim',   email:'dongho.kim@hyosung.com',   role:'CSP Goodwill Admin' };
+const SP_VP_FIXED = { name:'Chiseong Won', email:'chiseong.won@hyosung.com', role:'CSP Head' };
 let msal_g=null, user=null, siteId=null, employeeData=[], allReqCache=[];
 
 // ── MSAL ──
@@ -788,7 +789,13 @@ function renderApproverBlocks(source, amount){
     const div=document.createElement('div');
     div.className='appr-block '+(isFixed?'appr-fixed':'');
 
-    if(role==='CTRL'){
+    if(role==='CS_TM'){
+      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CSP Goodwill Admin (자동 지정)</span></div>
+        <div class="appr-info"><input type="text" value="${CSP_ADMIN.name}" readonly><input type="email" value="${CSP_ADMIN.email}" readonly></div>`;
+    } else if(role==='SP_VP'){
+      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CSP Head (자동 지정)</span></div>
+        <div class="appr-info"><input type="text" value="${SP_VP_FIXED.name}" readonly><input type="email" value="${SP_VP_FIXED.email}" readonly></div>`;
+    } else if(role==='CTRL'){
       div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— Controlling (자동 지정)</span></div>
         <div class="appr-info"><input type="text" value="${CONTROLLING.name}" readonly><input type="email" value="${CONTROLLING.email}" readonly></div>`;
     } else if(role==='CFO_'){
@@ -920,7 +927,9 @@ async function submitForm(){
     const approvers=[];
     line.forEach((role,i)=>{
       const order=i+1;
-      if(role==='CTRL') approvers.push({...CONTROLLING,order,role:'결재자(Controlling)'});
+      if(role==='CS_TM') approvers.push({...CSP_ADMIN,order,role:'결재자(CSP Goodwill Admin)'});
+      else if(role==='SP_VP') approvers.push({...SP_VP_FIXED,order,role:'결재자(CSP Head)'});
+      else if(role==='CTRL') approvers.push({...CONTROLLING,order,role:'결재자(Controlling)'});
       else if(role==='CFO_') approvers.push({...CFO,order,role:'결재자(CFO)'});
       else if(role==='CEO_') approvers.push({...CEO,order,role:'결재자(CEO)'});
       else{
