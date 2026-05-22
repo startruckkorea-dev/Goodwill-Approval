@@ -529,8 +529,8 @@ const ROLE_LABELS = {
   SD:'Sales Director', CTRL:'Controlling (고정)', CFO_:'CFO (고정)', CEO_:'CEO (고정)',
 };
 const FIXED_ROLES = ['CTRL','CFO_','CEO_','CS_TM','SP_VP'];
-const CSP_ADMIN   = { name:'Dongho Kim',   email:'dongho.kim@hyosung.com',   role:'CSP Goodwill Admin' };
-const SP_VP_FIXED = { name:'Chiseong Won', email:'chiseong.won@hyosung.com', role:'CSP Head' };
+const CSP_ADMIN   = { name:'', email:'', role:'CSP Goodwill Admin' }; // GW_CSP_1st from system_config
+const SP_VP_FIXED = { name:'', email:'', role:'CSP Head' };               // GW_CSP_Head from system_config
 let msal_g=null, user=null, siteId=null, employeeData=[], allReqCache=[];
 
 // ── MSAL ──
@@ -656,6 +656,8 @@ async function boot(account){
       Object.assign(CONTROLLING, cfgVal(_cfg,'GW_CONTROLLING',CONTROLLING));
       Object.assign(CFO,         cfgVal(_cfg,'GW_CFO',CFO));
       Object.assign(CEO,         cfgVal(_cfg,'GW_CEO',CEO));
+      Object.assign(CSP_ADMIN,   cfgVal(_cfg,'GW_CSP_1st', CSP_ADMIN));
+      Object.assign(SP_VP_FIXED, cfgVal(_cfg,'GW_CSP_Head',SP_VP_FIXED));
     }
     await loadEmployees();
     await checkApprovalBadge();
