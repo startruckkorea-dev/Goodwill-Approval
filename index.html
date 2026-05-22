@@ -1098,17 +1098,74 @@ async function processApproval(apprId,action,reqId,comment=''){
 async function exportGWAdminExcel(){
   loading(true,'Excel 생성 중...');
   try{
-    const data = await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500');
+    const [reqData, apprData] = await Promise.all([
+      api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500'),
+      api('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=999'),
+    ]);
     const status = document.getElementById('admin-status').value;
-    let items = data.value.sort((a,b)=>b.id-a.id);
+    const source = document.getElementById('admin-source').value;
+    let items = reqData.value.sort((a,b)=>b.id-a.id);
     if(status) items = items.filter(i=>i.fields.Status===status);
+    if(source) items = items.filter(i=>i.fields.Source===source);
     if(!items.length){loading(false);alert('내보낼 데이터가 없습니다.');return;}
-    const headers = ['번호','신청자','제목','상태','신청일'];
-    const rows = [headers, ...items.map(i=>{const f=i.fields;return[i.id,f.RequesterEmail||'',f.Title||'',f.Status||'',f.RequestDate?f.RequestDate.slice(0,10):''];})];
+
+    // 결재자 맵 구성 (reqId → 결재자 배열)
+    const apprMap = {};
+    (apprData.value||[]).forEach(a=>{
+      const rid = String(a.fields.RequestID);
+      if(!apprMap[rid]) apprMap[rid]=[];
+      apprMap[rid].push(a.fields);
+    });
+
+    // 최대 결재 단계 수 계산
+    let maxStep = 0;
+    items.forEach(i=>{ const n=(apprMap[String(i.id)]||[]).length; if(n>maxStep) maxStep=n; });
+
+    // 헤더
+    const headers = ['번호','신청자','제목','Source','Type','Amount','상태','신청일'];
+    for(let s=1;s<=maxStep;s++){
+      headers.push(s+'차 역할', s+'차 결재자', s+'차 이메일', s+'차 상태', s+'차 처리일', s+'차 Comment');
+    }
+
+    // 데이터 행
+    const rows = [headers];
+    items.forEach(item=>{
+      const f = item.fields;
+      const aprs = (apprMap[String(item.id)]||[]).sort((a,b)=>(a.ApprovalOrder||0)-(b.ApprovalOrder||0));
+      const row = [
+        item.id,
+        f.RequesterEmail||'',
+        f.Title||'',
+        f.Source||'',
+        f.GoodwillType||'',
+        f.Amount||'',
+        f.Status||'',
+        f.RequestDate ? fmtDate(f.RequestDate) : '',
+      ];
+      for(let s=0;s<maxStep;s++){
+        const a = aprs[s];
+        if(a){
+          const cmt = (a.Comment||'').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').trim();
+          row.push(a.ApproverRole||'', a.ApproverName||'', a.ApproverEmail||'', a.Status||'', a.ApprovalDate?fmtDate(a.ApprovalDate):'', cmt);
+        } else {
+          row.push('','','','','','');
+        }
+      }
+      rows.push(row);
+    });
+
     const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // 컬럼 너비
+    const colW = [6,28,24,22,16,22,10,18];
+    for(let s=0;s<maxStep;s++) colW.push(20,16,28,10,18,30);
+    ws['!cols'] = colW.map(w=>({wch:w}));
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Goodwill');
-    XLSX.writeFile(wb, 'Goodwill_Admin_'+new Date().toISOString().slice(0,10)+'.xlsx');
+    const now = new Date(new Date().getTime()+9*3600*1000);
+    const ds = now.getUTCFullYear()+String(now.getUTCMonth()+1).padStart(2,'0')+String(now.getUTCDate()).padStart(2,'0')+'_'+String(now.getUTCHours()).padStart(2,'0')+String(now.getUTCMinutes()).padStart(2,'0');
+    XLSX.writeFile(wb, 'Goodwill_Admin_'+ds+'.xlsx');
   }catch(e){alert('Excel 생성 실패: '+e.message);}
   finally{loading(false);}
 }
