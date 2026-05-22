@@ -404,8 +404,10 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
         <option value="Local Sales Goodwill">Local Sales Goodwill</option>
         <option value="Market Goodwill">Market Goodwill</option>
       </select>
-      <span style="font-size:.8rem;color:#605e5c;align-self:center" id="admin-count"></span>
-      <button onclick="exportGWAdminExcel()" style="margin-left:auto;padding:6px 14px;background:#107c10;color:#fff;border:none;border-radius:4px;font-size:.82rem;cursor:pointer;white-space:nowrap">📊 Excel 내보내기</button>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <span style="font-size:.82rem;color:#605e5c;font-weight:500" id="admin-count"></span>
+        <button onclick="exportGWAdminExcel()" style="padding:6px 14px;background:#107c10;color:#fff;border:none;border-radius:4px;font-size:.82rem;cursor:pointer;white-space:nowrap">📊 Excel 내보내기</button>
+      </div>
     </div>
     <div class="card" style="padding:0;overflow-x:auto">
       <table class="list-table">
