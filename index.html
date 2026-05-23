@@ -250,8 +250,8 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
       <div class="app-title">STK Goodwill Approval</div>
       <div class="app-sub">Goodwill / Tech-Care / CCR / Courtesy 결재 시스템</div>
       <div style="font-size:11px;color:#605e5c;margin-top:4px">
-        <div id="gw-contact-sales">Sales 관련 문의 Email: </div>
-        <div id="gw-contact-csp">CSP 관련 문의 Email: </div>
+        <div id="gw-contact-sales">BU Admin(Sales 관련) 문의 Email: </div>
+        <div id="gw-contact-csp">BU Admin(CSP 관련) 문의 Email: </div>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
@@ -651,8 +651,8 @@ async function boot(account){
       // Sales/CSP 문의 이메일
       const _gwSales=cfgVal(_cfg,'GW_CONTACT_Sales',cfgVal(_cfg,'GW_CONTACT',{email:''}));
       const _gwCSP  =cfgVal(_cfg,'GW_CONTACT_CSP',  cfgVal(_cfg,'GW_CONTACT',{email:''}));
-      const _gwSalesEl=document.getElementById('gw-contact-sales');if(_gwSalesEl)_gwSalesEl.textContent='Sales 관련 문의 Email: '+(_gwSales.email||'-');
-      const _gwCSPEl  =document.getElementById('gw-contact-csp');  if(_gwCSPEl)  _gwCSPEl.textContent  ='CSP 관련 문의 Email: '  +(_gwCSP.email  ||'-');
+      const _gwSalesEl=document.getElementById('gw-contact-sales');if(_gwSalesEl)_gwSalesEl.textContent='BU Admin(Sales 관련) 문의 Email: '+(_gwSales.email||'-');
+      const _gwCSPEl  =document.getElementById('gw-contact-csp');  if(_gwCSPEl)  _gwCSPEl.textContent='BU Admin(CSP 관련) 문의 Email: '+(_gwCSP.email||'-');
       // 관리자: GW_ADMIN_1~5 모두 읽기
       const _adminList = cfgEmails(_cfg,['GW_ADMIN_1','ADMIN_SP']); // GW_ADMIN_N 패턴 자동 확장 (1~N 무한)
       if(_adminList.length) ADMIN_EMAILS.splice(0,ADMIN_EMAILS.length,..._adminList);
