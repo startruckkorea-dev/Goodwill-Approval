@@ -1042,7 +1042,10 @@ async function loadApprovalQueue(){
       api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500'),
     ]);
     const reqMap={};reqData.value.forEach(r=>{reqMap[r.id]=r.fields;});
-    const mine=apprData.value.filter(i=>(i.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&i.fields.Status==='대기').sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
+    const _myPending=apprData.value.filter(i=>(i.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&i.fields.Status==='대기');
+    const _dedupMap={};
+    _myPending.forEach(i=>{ const rid=String(i.fields.RequestID); if(!_dedupMap[rid]||i.fields.ApprovalOrder<_dedupMap[rid].fields.ApprovalOrder) _dedupMap[rid]=i; });
+    const mine=Object.values(_dedupMap).sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
     const rows=mine.map(item=>{
       const f=item.fields,rf=reqMap[String(f.RequestID)]||{};
       return`<tr onclick="showDetail(${f.RequestID})" style="cursor:pointer"><td style="color:#0078d4;font-weight:600">${f.RequestID}</td><td style="font-size:.78rem">${rf.RequesterEmail||''}</td><td style="font-size:.78rem;color:#0078d4">${rf.Title||'-'}</td><td><span class="badge-type">${rf.Source||''}</span></td><td>${rf.GoodwillType||''}</td><td style="font-size:.78rem">${fmtGWAmount(rf.Amount)}</td><td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
