@@ -1103,6 +1103,8 @@ async function confirmApproval(){
 async function processApproval(apprId,action,reqId,comment=''){
   loading(true);
   try{
+    const _cur=await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+apprId+'?$expand=fields');
+    if(_cur.fields.Status!=='대기'){showAlert('이미 처리된 결재 항목입니다.','다른 창에서 처리되었거나 이미 완료된 항목입니다.','⚠️');loadApprovalQueue();return;}
     await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+apprId,'PATCH',{fields:{Status:action==='승인'?'승인':action,Comment:comment,ApprovalDate:new Date().toISOString()}});
     if(action==='반려'){
       await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'반려'}});
