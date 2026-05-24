@@ -1042,7 +1042,7 @@ async function loadApprovalQueue(){
       api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500'),
     ]);
     const reqMap={};reqData.value.forEach(r=>{reqMap[r.id]=r.fields;});
-    const _myPending=apprData.value.filter(i=>(i.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&i.fields.Status==='대기');
+    const _myPending=apprData.value.filter(i=>(e=>(e===(user.email||'').toLowerCase()||e===(user.username||'').toLowerCase()))((i.fields.ApproverEmail||'').toLowerCase())&&i.fields.Status==='대기');
     const _dedupMap={};
     _myPending.forEach(i=>{ const rid=String(i.fields.RequestID); if(!_dedupMap[rid]||i.fields.ApprovalOrder<_dedupMap[rid].fields.ApprovalOrder) _dedupMap[rid]=i; });
     const mine=Object.values(_dedupMap).sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
@@ -1543,7 +1543,7 @@ async function checkApprovalBadge(){
   if(!siteId)return;
   try{
     const data=await apiAll('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=500');
-    const mine=data.value.filter(i=>(i.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&i.fields.Status==='대기');
+    const mine=data.value.filter(i=>(e=>(e===(user.email||'').toLowerCase()||e===(user.username||'').toLowerCase()))((i.fields.ApproverEmail||'').toLowerCase())&&i.fields.Status==='대기');
     const badge=document.getElementById('appr-badge');
     if(mine.length){badge.textContent=mine.length;badge.style.display='inline';}
     else badge.style.display='none';
