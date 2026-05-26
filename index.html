@@ -370,7 +370,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
   <div id="tab-list" style="display:none">
     <div class="card" style="padding:0;overflow-x:auto">
       <table class="list-table">
-        <thead><tr><th>번호</th><th>Title</th><th>Source</th><th>Type</th><th>Amount</th><th>상태</th><th>신청일</th></tr></thead>
+        <thead><tr><th>번호</th><th>Title</th><th>Source</th><th>Type</th><th>Amount</th><th>상태</th><th>신청일</th><th></th></tr></thead>
         <tbody id="list-body"><tr><td colspan="6" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
       </table>
     </div>
@@ -1031,7 +1031,7 @@ async function loadMyList(){
   try{
     const data=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500');
     const mine=data.value.filter(i=>(i.fields.RequesterEmail||'').toLowerCase()===(user.email||'').toLowerCase()).sort((a,b)=>b.id-a.id);
-    dynLoadEnd(); pgSet('list',mine,item=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#0078d4;font-weight:600">${item.id}</td><td style="font-size:.78rem;color:#0078d4">${f.Title||'-'}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td style="font-size:.78rem">${fmtGWAmount(f.Amount)}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td>${fmtDate(f.RequestDate)}</td><td style="text-align:center">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, '신청 내역이 없습니다.', 7);
+    dynLoadEnd(); pgSet('list',mine,item=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#0078d4;font-weight:600">${item.id}</td><td style="font-size:.78rem;color:#0078d4">${f.Title||'-'}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td style="font-size:.78rem">${fmtGWAmount(f.Amount)}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td>${fmtDate(f.RequestDate)}</td><td style="text-align:center">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, '신청 내역이 없습니다.', 8);
   }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
 }
 
