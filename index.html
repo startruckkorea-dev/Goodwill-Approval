@@ -504,11 +504,11 @@ const CEO         = { name:'',   email:'',    role:'CEO'         };
 // 고정: 'CTRL' = Controlling, 'CFO_' = CFO, 'CEO_' = CEO
 
 const APPROVAL_MATRIX = {
-  // CS_TM = CSP Goodwill Admin (고정), CTM = CS Team Manager (동적)
+  // CS_TM = CSP Goodwill Admin (고정·GW_CSP_1st), SP_VP = CSP Head (고정·GW_CSP_Head)
   'Local CSP Goodwill': {
-    '0~1999999':      ['CS_TM','CTM','CTRL'],
-    '2000000~4999999':['CS_TM','CTM','TSM','SP_VP','CTRL'],
-    '5000000~':       ['CS_TM','CTM','TSM','SP_VP','CEO_','CTRL','CFO_'],
+    '0~1999999':      ['CS_TM','SP_VP','CTRL'],
+    '2000000~4999999':['CS_TM','SP_VP','CTRL'],
+    '5000000~':       ['CS_TM','SP_VP','CEO_','CTRL','CFO_'],
   },
   'Local CSP Van Goodwill': {
     '0~1999999':      ['CS_TM','CTM'],
@@ -521,9 +521,9 @@ const APPROVAL_MATRIX = {
     '5000000~':       ['SA2','SA1','SD','CS_TM','CTM','CEO_','CTRL','CFO_'],
   },
   'Market Goodwill': {
-    '0~1999999':      ['CS_TM','CTM','CTRL'],
-    '2000000~4999999':['CS_TM','CTM','TSM','SP_VP','CTRL'],
-    '5000000~':       ['CS_TM','CTM','TSM','SP_VP','CTRL','CFO_'],
+    '0~1999999':      ['CS_TM','SP_VP','CTRL'],
+    '2000000~4999999':['CS_TM','SP_VP','CTRL'],
+    '5000000~':       ['CS_TM','SP_VP','CEO_','CTRL','CFO_'],
   },
 };
 
