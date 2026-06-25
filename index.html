@@ -425,7 +425,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
   <div class="modal-box">
     <button class="modal-close" onclick="closeModal()">×</button>
     <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span>신청 상세 내용</span>
+      <span>신청 상세 내용 · <span id="modal-title-id" style="color:#0078d4;font-weight:700"></span></span>
       <button id="btn-export-pdf" onclick="exportModalPdf()" title="결재내용 통합 PDF 출력" style="display:none;background:#0078d4;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:all .15s" onmouseover="this.style.background='#005a9e'" onmouseout="this.style.background='#0078d4'">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         PDF 출력
@@ -1409,7 +1409,8 @@ async function exportModalPdf() {
 
 async function showDetail(id){
   const modal=document.getElementById('detail-modal');
-  document.getElementById('modal-content').innerHTML='';
+  const _titleEl=document.getElementById('modal-title-id'); if(_titleEl) _titleEl.textContent=f.Title||'';
+    document.getElementById('modal-content').innerHTML='';
   modal.className='open';
   try{
     const [r,apprData]=await Promise.all([
@@ -1491,9 +1492,9 @@ async function showDetail(id){
     if(pdfBtn) pdfBtn.style.display = 'flex';
     document.getElementById('modal-content').innerHTML=
       sec('기본 정보')+
-      row('티켓번호',id)+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
+      row('신청자',f.RequesterEmail)+row('Company',f.Company)+
       row('Source',f.Source)+row('Amount',fmtGWAmount(f.Amount))+row('Type',f.GoodwillType)+
-      row('Title',f.Title)+row('상태',f.Status)+row('신청일',fmtDate(f.RequestDate))+
+      row('상태',f.Status)+row('신청일',fmtDate(f.RequestDate))+
       sec('상세 내용')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${f.Description||'-'}</span></div>`+
       sec('첨부파일')+filesHtml+
       sec('결재 이력')+'<div style="background:#f9f9f9;border-radius:4px;border:1px solid #edebe9">'+apprHtml+'</div>'+
