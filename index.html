@@ -1409,8 +1409,7 @@ async function exportModalPdf() {
 
 async function showDetail(id){
   const modal=document.getElementById('detail-modal');
-  const _titleEl=document.getElementById('modal-title-id'); if(_titleEl) _titleEl.textContent=f.Title||'';
-    document.getElementById('modal-content').innerHTML='';
+  document.getElementById('modal-content').innerHTML='';
   modal.className='open';
   try{
     const [r,apprData]=await Promise.all([
@@ -1490,6 +1489,7 @@ async function showDetail(id){
     window._currentDetailFields = f;
     const pdfBtn = document.getElementById('btn-export-pdf');
     if(pdfBtn) pdfBtn.style.display = 'flex';
+    const _titleEl=document.getElementById('modal-title-id'); if(_titleEl) _titleEl.textContent=f.Title||'';
     document.getElementById('modal-content').innerHTML=
       sec('기본 정보')+
       row('신청자',f.RequesterEmail)+row('Company',f.Company)+
