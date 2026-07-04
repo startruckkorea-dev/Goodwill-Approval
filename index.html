@@ -392,19 +392,26 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
   <!-- ── 관리자 ── -->
   <div id="tab-admin" style="display:none">
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <select id="admin-status" onchange="loadAdminList()" style="border:1px solid #d2d0ce;border-radius:4px;padding:6px 10px;font-size:.82rem;font-family:inherit">
+      <select id="admin-status" onchange="renderAdminList()" style="border:1px solid #d2d0ce;border-radius:4px;padding:6px 10px;font-size:.82rem;font-family:inherit">
         <option value="">전체 상태</option>
         <option value="대기">대기</option>
         <option value="승인완료">승인완료</option>
         <option value="반려">반려</option>
       </select>
-      <select id="admin-source" onchange="loadAdminList()" style="border:1px solid #d2d0ce;border-radius:4px;padding:6px 10px;font-size:.82rem;font-family:inherit">
+      <select id="admin-source" onchange="renderAdminList()" style="border:1px solid #d2d0ce;border-radius:4px;padding:6px 10px;font-size:.82rem;font-family:inherit">
         <option value="">전체 Source</option>
         <option value="Local CSP Goodwill">Local CSP Goodwill</option>
         <option value="Local CSP Van Goodwill">Local CSP Van Goodwill</option>
         <option value="Local Sales Goodwill">Local Sales Goodwill</option>
         <option value="Market Goodwill">Market Goodwill</option>
       </select>
+      <select id="admin-amount" onchange="renderAdminList()" style="border:1px solid #d2d0ce;border-radius:4px;padding:6px 10px;font-size:.82rem;font-family:inherit">
+        <option value="">전체 Amount</option>
+        <option value="0~1999999">0 ~ 1,999,999</option>
+        <option value="2000000~4999999">2,000,000 ~ 4,999,999</option>
+        <option value="5000000~">5,000,000 ~</option>
+      </select>
+      <input type="text" id="admin-search" oninput="renderAdminList()" placeholder="신청자/Title/Type명" style="border:1px solid #d2d0ce;border-radius:4px;padding:6px 10px;font-size:.82rem;font-family:inherit;min-width:200px">
       <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
         <span style="font-size:.82rem;color:#605e5c;font-weight:500" id="admin-count"></span>
         <button onclick="exportGWAdminExcel()" style="padding:6px 14px;background:#107c10;color:#fff;border:none;border-radius:4px;font-size:.82rem;cursor:pointer;white-space:nowrap">📊 Excel 내보내기</button>
@@ -1138,9 +1145,18 @@ async function exportGWAdminExcel(){
     ]);
     const status = document.getElementById('admin-status').value;
     const source = document.getElementById('admin-source').value;
+    const amount = document.getElementById('admin-amount').value;
+    const kw = ((document.getElementById('admin-search')||{value:''}).value||'').toLowerCase().trim();
     let items = reqData.value.sort((a,b)=>b.id-a.id);
     if(status) items = items.filter(i=>i.fields.Status===status);
     if(source) items = items.filter(i=>i.fields.Source===source);
+    if(amount) items = items.filter(i=>i.fields.Amount===amount);
+    if(kw) items = items.filter(i=>{
+      const f=i.fields;
+      return (f.RequesterEmail||'').toLowerCase().includes(kw) ||
+             (f.Title||'').toLowerCase().includes(kw) ||
+             (f.GoodwillType||'').toLowerCase().includes(kw);
+    });
     if(!items.length){loading(false);alert('내보낼 데이터가 없습니다.');return;}
 
     // 결재자 맵 구성 (reqId → 결재자 배열)
@@ -1204,19 +1220,35 @@ async function exportGWAdminExcel(){
   finally{loading(false);}
 }
 
+let _adminDataCache = [];
 async function loadAdminList(){
   const tbody=document.getElementById('admin-body');
   dynLoadStart('Goodwill 데이터 불러오는 중');
   try{
     const data=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500');
-    const status=document.getElementById('admin-status').value;
-    const source=document.getElementById('admin-source').value;
-    let items=data.value.sort((a,b)=>b.id-a.id);
-    if(status)items=items.filter(i=>i.fields.Status===status);
-    if(source)items=items.filter(i=>i.fields.Source===source);
-    document.getElementById('admin-count').textContent='총 '+items.length+'건';
-    dynLoadEnd(); pgSet('admin',items,(item,idx)=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#0078d4;font-weight:600">${idx+1}</td><td style="font-size:.78rem">${f.RequesterEmail||''}</td><td style="font-size:.78rem;color:#0078d4">${f.Title||'-'}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td>${fmtGWAmount(f.Amount)}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',8);
+    _adminDataCache = data.value.sort((a,b)=>b.id-a.id);
+    dynLoadEnd();
+    renderAdminList();
   }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+}
+
+function renderAdminList(){
+  const status=document.getElementById('admin-status').value;
+  const source=document.getElementById('admin-source').value;
+  const amount=document.getElementById('admin-amount').value;
+  const kw=((document.getElementById('admin-search')||{value:''}).value||'').toLowerCase().trim();
+  let items=_adminDataCache.slice();
+  if(status)items=items.filter(i=>i.fields.Status===status);
+  if(source)items=items.filter(i=>i.fields.Source===source);
+  if(amount)items=items.filter(i=>i.fields.Amount===amount);
+  if(kw)items=items.filter(i=>{
+    const f=i.fields;
+    return (f.RequesterEmail||'').toLowerCase().includes(kw) ||
+           (f.Title||'').toLowerCase().includes(kw) ||
+           (f.GoodwillType||'').toLowerCase().includes(kw);
+  });
+  document.getElementById('admin-count').textContent='총 '+items.length+'건';
+  pgSet('admin',items,(item,idx)=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#0078d4;font-weight:600">${idx+1}</td><td style="font-size:.78rem">${f.RequesterEmail||''}</td><td style="font-size:.78rem;color:#0078d4">${f.Title||'-'}</td><td><span class="badge-type">${f.Source||''}</span></td><td>${f.GoodwillType||''}</td><td>${fmtGWAmount(f.Amount)}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',8);
 }
 
 // ── Detail Modal ──
