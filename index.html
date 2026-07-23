@@ -549,9 +549,7 @@ let msal_g=null, user=null, siteId=null, employeeData=[], allReqCache=[];
 async function signIn() {
   try {
     if (window!==window.top){window.open(window.location.href,'_blank');return;}
-    const r = await msal_g.loginPopup({scopes:SCOPES});
-    msal_g.setActiveAccount(r.account);
-    await boot(r.account);
+    await msal_g.loginRedirect({scopes:SCOPES});
   } catch(e){ showLoginError(e.message); }
 }
 function signOut(){ msal_g.logoutRedirect(); }
