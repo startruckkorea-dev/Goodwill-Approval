@@ -1194,8 +1194,8 @@ async function processApproval(apprId,action,reqId,comment=''){
     if(action==='반려'){
       await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'반려'}});
     } else {
-      let _ap=[],_nu='/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=500';while(_nu){const _p=await api(_nu);_ap=_ap.concat(_p.value);_nu=_p['@odata.nextLink']?_p['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null;}
-      const next=_ap.filter(i=>Number(i.fields.RequestID)===Number(reqId)&&(i.fields.Status||'').trim()==='대기(잠김)').sort((a,b)=>a.fields.ApprovalOrder-b.fields.ApprovalOrder);
+      let _ap=[],_nu='/sites/'+siteId+'/lists/'+LIST_APR+"/items?$expand=fields&$top=500&$filter=fields/RequestID eq "+parseInt(reqId)+" and fields/Status eq '대기(잠김)'";while(_nu){const _p=await api(_nu);_ap=_ap.concat(_p.value);_nu=_p['@odata.nextLink']?_p['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null;}
+      const next=_ap.sort((a,b)=>a.fields.ApprovalOrder-b.fields.ApprovalOrder);
       if(next.length) await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+next[0].id,'PATCH',{fields:{Status:'대기'}});
       else await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'승인완료'}});
     }
