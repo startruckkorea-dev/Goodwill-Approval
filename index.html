@@ -1603,10 +1603,10 @@ async function showDetail(id){
     if(pdfBtn) pdfBtn.style.display = 'flex';
     document.getElementById('modal-content').innerHTML=
       sec('기본 정보')+
-      row('제목',f.Title)+(f.RequestTitle?row('요청 제목',f.RequestTitle):'')+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
+      row('제목',f.Title)+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
       row('Source',f.Source)+row('Amount',fmtGWAmount(f.Amount))+row('Type',f.GoodwillType)+
       row('상태',f.Status)+row('신청일',fmtDate(f.RequestDate))+
-      sec('상세 내용')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${f.Description||'-'}</span></div>`+
+      sec('상세 내용')+(f.RequestTitle?`<div class="det-row"><span class="det-lbl">제목</span><span class="det-val" style="white-space:pre-wrap">${f.RequestTitle}</span></div>`:'')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${f.Description||'-'}</span></div>`+
       sec('첨부파일')+filesHtml+
       sec('결재 이력')+'<div style="background:#f9f9f9;border-radius:4px;border:1px solid #edebe9">'+apprHtml+'</div>'+
       (myPending?`<div class="proc-btns" style="margin-top:14px"><button class="btn-approve" onclick="showConfirm(${myPending.id},'승인',${id})">✅ 승인</button><button class="btn-reject" onclick="showConfirm(${myPending.id},'반려',${id})">❌ 반려</button></div>`:'');
