@@ -1603,7 +1603,7 @@ async function showDetail(id){
     if(pdfBtn) pdfBtn.style.display = 'flex';
     document.getElementById('modal-content').innerHTML=
       sec('기본 정보')+
-      row('제목',f.RequestTitle||f.Title)+(f.RequestTitle?row('신청번호',f.Title):'')+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
+      row('제목',f.Title)+(f.RequestTitle?row('요청 제목',f.RequestTitle):'')+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
       row('Source',f.Source)+row('Amount',fmtGWAmount(f.Amount))+row('Type',f.GoodwillType)+
       row('상태',f.Status)+row('신청일',fmtDate(f.RequestDate))+
       sec('상세 내용')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${f.Description||'-'}</span></div>`+
