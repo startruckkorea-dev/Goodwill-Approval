@@ -1008,7 +1008,7 @@ async function submitForm(){
     };
     const item=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items','POST',{fields});
     const reqId=parseInt(item.id);
-    await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Title:'GW-'+new Date().toISOString().slice(0,10)+'_ID-'+reqId}});
+    await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Title:'GW-'+new Date(new Date().getTime()+9*3600*1000).toISOString().slice(0,10)+'_ID-'+reqId}});
     // 사용자가 입력한 제목은 별도 필드(RequestTitle)로 저장 - 자동생성 ID(Title)는 그대로 유지해 기존 연동(Power Automate 등)에 영향 없도록 함
     try {
       await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{RequestTitle:title}});
@@ -1055,13 +1055,13 @@ async function submitForm(){
     });
     for(const a of approvers){
       await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items','POST',{fields:{
-        Title:'GW-'+new Date().toISOString().slice(0,10)+'_ID-'+reqId+'-'+a.order, RequestID:reqId,
+        Title:'GW-'+new Date(new Date().getTime()+9*3600*1000).toISOString().slice(0,10)+'_ID-'+reqId+'-'+a.order, RequestID:reqId,
         ApproverEmail:a.email, ApproverName:a.name,
         ApproverRole:a.role, ApprovalOrder:a.order,
         Status:a.order===1?'대기':'대기(잠김)'
       }});
     }
-    showAlert('신청이 완료되었습니다.', 'GW-'+new Date().toISOString().slice(0,10)+'_ID-'+reqId);
+    showAlert('신청이 완료되었습니다.', 'GW-'+new Date(new Date().getTime()+9*3600*1000).toISOString().slice(0,10)+'_ID-'+reqId);
     resetForm(); switchTab('list');
   }catch(e){showAlert('오류가 발생했습니다.', e.message, '⚠️');}
   finally{loading(false);}
@@ -1503,7 +1503,7 @@ async function exportModalPdf() {
     const finalBlob = new Blob([finalBytes], {type:'application/pdf'});
     const _f = window._currentDetailFields;
     const reqEmail = (_f?.RequesterEmail||'unknown').replace(/[^a-z0-9]/gi,'_');
-    const saveFileName = 'GW_'+(window._currentDetailId||'req')+'_'+reqEmail+'_'+new Date().toISOString().substring(0,10)+'.pdf';
+    const saveFileName = 'GW_'+(window._currentDetailId||'req')+'_'+reqEmail+'_'+new Date(new Date().getTime()+9*3600*1000).toISOString().substring(0,10)+'.pdf';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(finalBlob);
     a.download = saveFileName;
