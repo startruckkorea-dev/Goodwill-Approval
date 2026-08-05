@@ -1008,7 +1008,7 @@ async function submitForm(){
     };
     const item=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items','POST',{fields});
     const reqId=parseInt(item.id);
-    await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Title:'GW-'+new Date().toISOString().slice(0,10)+'_ID-'+reqId}});
+    await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Title:'GW-'+new Date().toISOString().slice(0,10)+'_ID-'+reqId+' : '+title}});
 
     // 파일 업로드
     const allFiles=[];
