@@ -503,14 +503,18 @@ let _configLoaded = false;
 // 고정 결재자
 const CONTROLLING = { name:'',        email:'',          role:'Controlling' };
 const CFO         = { name:'',   email:'',  role:'CFO'         };
+// [LEGACY] GW_CEO — 2026-08-06부로 전 Goodwill 유형에서 CEO 결재 단계 폐지.
+// 결재라인 구성에는 더 이상 사용하지 않으며, 폐지 이전에 생성된 과거 신청건의
+// 결재이력(ApproverRole='결재자(CEO)') 표시 호환을 위해 상수/렌더링 분기만 남겨둠.
 const CEO         = { name:'',   email:'',    role:'CEO'         };
-const RD           = { name:'',   email:'',    role:'RD'          }; // GW_RD from system_config - Local CSP/Sales/Market Goodwill의 CEO 결재라인 대체용
+const RD           = { name:'',   email:'',    role:'RD'          }; // GW_RD from system_config - 전 Goodwill 유형(CSP/Van/Sales/Market)의 CEO 결재라인 대체
 
 // ── 결재 라인 매트릭스 ──
 // 동적 결재자 역할 (직원 검색으로 지정)
 // 'CS_TM' = CS Team Manager, 'TSM' = Technical Service Manager,
 // 'SP_VP' = S&P VP 2nd, 'SA1' = Sales Assistant1, 'SA2' = Sales Assistant2, 'SD' = Sales Director
-// 고정: 'CTRL' = Controlling, 'CFO_' = CFO, 'CEO_' = CEO
+// 고정: 'CTRL' = Controlling, 'CFO_' = CFO, 'RD_' = RD
+// ('CEO_'는 2026-08-06 전 유형에서 폐지 — 매트릭스에서 사용 금지)
 
 const APPROVAL_MATRIX = {
   // CS_TM = CSP Goodwill Admin (고정·GW_CSP_1st), SP_VP = CSP Head (고정·GW_CSP_Head)
@@ -522,7 +526,7 @@ const APPROVAL_MATRIX = {
   'Local CSP Van Goodwill': {
     '0~1999999':      ['CS_TM','SP_VP','CTRL'],
     '2000000~4999999':['CS_TM','SP_VP','CTRL'],
-    '5000000~':       ['CS_TM','SP_VP','CEO_','CTRL','CFO_'],
+    '5000000~':       ['CS_TM','SP_VP','RD_','CTRL','CFO_'],
   },
   'Local Sales Goodwill': {
     '0~1999999':      ['SA2','SA1','SD','CTRL'],
