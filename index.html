@@ -496,6 +496,15 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
 <div id="loading"><div class="loading-box"><div class="spinner"></div><span>처리 중입니다...</span></div></div>
 
 <script>
+
+// ── XSS 방어: 사용자 자유 입력을 innerHTML에 넣기 전 이스케이프 ──
+// Title 등 시스템 생성 값과 달리 Description·RequestTitle은 사용자가 자유롭게 입력하므로,
+// <img src=x onerror=...> 같은 페이로드가 그대로 실행될 수 있다.
+function escHtml(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 // ── Constants ──
 const CLIENT_ID  = '432976c2-b43a-492e-8213-ece505fa1f51';
 const TENANT_ID  = '19cab1f5-21f4-44df-8ac6-96d6ca595203';
@@ -1642,7 +1651,7 @@ async function showDetail(id){
       row('제목',f.Title)+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
       row('Source',f.Source)+row('Amount',fmtGWAmount(f.Amount))+row('Type',f.GoodwillType)+
       row('상태','<span class="badge-'+(f.Status||'대기')+'">'+(f.Status||'대기')+'</span>')+row('신청일',fmtDate(f.RequestDate))+
-      sec('상세 내용')+(f.RequestTitle?`<div class="det-row"><span class="det-lbl">요청 제목</span><span class="det-val" style="white-space:pre-wrap">${f.RequestTitle}</span></div>`:'')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${f.Description||'-'}</span></div>`+
+      sec('상세 내용')+(f.RequestTitle?`<div class="det-row"><span class="det-lbl">요청 제목</span><span class="det-val" style="white-space:pre-wrap">${escHtml(f.RequestTitle)}</span></div>`:'')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${escHtml(f.Description||'-')}</span></div>`+
       sec('첨부파일')+filesHtml+
       sec('결재 이력')+'<div style="background:#f9f9f9;border-radius:4px;border:1px solid #edebe9">'+apprHtml+'</div>'+
       (myPending?`<div class="proc-btns" style="margin-top:14px"><button class="btn-approve" onclick="showConfirm(${myPending.id},'승인',${id})">✅ 승인</button><button class="btn-reject" onclick="showConfirm(${myPending.id},'반려',${id})">❌ 반려</button></div>`:'');
