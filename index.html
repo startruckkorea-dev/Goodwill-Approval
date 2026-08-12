@@ -308,7 +308,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
         </div>
         <div class="form-group">
           <label>Type <span class="req-mark">*</span></label>
-          <select id="f-type">
+          <select id="f-type" onchange="onTypeChange()">
             <option value="">- Choice Type -</option>
             <option value="Free repair/maintenance/retrofit">Free repair/maintenance/retrofit</option>
             <option value="MB Point">MB Point</option>
@@ -316,7 +316,14 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
             <option value="Fuel Voucher">Fuel Voucher</option>
             <option value="Tires Voucher">Tires Voucher</option>
             <option value="Cash">Cash</option>
+            <option value="Exception">Exception</option>
           </select>
+          <!-- Exception 선택 시에만 사유 입력란을 노출한다. 저장은 Exception(입력내용) 형태로 합친다. -->
+          <input type="text" id="f-type-exception" placeholder="Exception 사유를 입력해주세요" maxlength="100"
+            style="display:none;margin-top:6px;width:100%;box-sizing:border-box" oninput="onTypeExceptionInput()">
+          <div id="f-type-exception-hint" style="display:none;font-size:.68rem;color:#8a6116;background:#fdf6e3;border:1px solid #f0d9a0;border-radius:6px;padding:7px 10px;margin-top:6px;line-height:1.6">
+            입력하신 내용은 <b>Exception(입력내용)</b> 형태로 저장됩니다.
+          </div>
         </div>
       </div>
       <div class="form-row">
@@ -964,17 +971,41 @@ function gwPersonChange(order){
   document.getElementById('ga'+order+'-email').value=p?p.email:'';
 }
 
+// ── Type: Exception 처리 ─────────────────────────────────────────────
+// Exception을 고르면 사유 입력란을 노출하고, 저장 시 'Exception(사유)' 한 문자열로 합친다.
+// 별도 컬럼을 만들지 않아도 되고, 목록·상세·Excel 어디서든 사유가 함께 보인다.
+function onTypeChange(){
+  const isExc = document.getElementById('f-type').value === 'Exception';
+  const inp  = document.getElementById('f-type-exception');
+  const hint = document.getElementById('f-type-exception-hint');
+  if(inp)  { inp.style.display  = isExc ? 'block' : 'none'; if(!isExc) inp.value=''; }
+  if(hint) hint.style.display = isExc ? 'block' : 'none';
+}
+// 저장용 Type 값 — Exception이면 사유를 괄호로 덧붙인다
+function resolveTypeValue(){
+  const t = document.getElementById('f-type').value;
+  if(t !== 'Exception') return t;
+  const r = (document.getElementById('f-type-exception')?.value || '').trim();
+  return r ? `Exception(${r})` : 'Exception';
+}
+
 // ── Submit ──
 async function submitForm(){
   const source=document.getElementById('f-source').value;
   const amount=document.getElementById('f-amount').value;
-  const type  =document.getElementById('f-type').value;
+  const type  =resolveTypeValue();   // Exception이면 'Exception(사유)' 형태로 반환
   const title =document.getElementById('f-title').value.trim();
   const company=document.getElementById('f-company').value;
 
   if(!source){alert('Source를 선택해주세요.');return;}
   if(!amount){alert('Amount를 선택해주세요.');return;}
   if(!type)  {alert('Type을 선택해주세요.');return;}
+  // Exception은 사유가 근거 자료가 되므로 미입력 시 제출을 막는다
+  if(document.getElementById('f-type').value==='Exception' && type==='Exception'){
+    alert('Exception 사유를 입력해주세요.');
+    document.getElementById('f-type-exception')?.focus();
+    return;
+  }
   if(!title) {alert('Title을 입력해주세요.');return;}
   if(!document.getElementById('f-main').files.length){alert('Goodwill/Tech Care 파일을 첨부해주세요.');return;}
 
@@ -1077,6 +1108,7 @@ function resetForm(){
   document.getElementById('f-source').selectedIndex=0;
   document.getElementById('f-amount').selectedIndex=0;
   document.getElementById('f-type').selectedIndex=0;
+  onTypeChange();   // Exception 입력란·안내를 함께 초기화
   document.getElementById('f-title').value='';
   document.getElementById('f-desc').value='';
   document.getElementById('desc-count').textContent='0';
@@ -1609,7 +1641,7 @@ async function showDetail(id){
       sec('기본 정보')+
       row('제목',f.Title)+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
       row('Source',f.Source)+row('Amount',fmtGWAmount(f.Amount))+row('Type',f.GoodwillType)+
-      row('상태',f.Status)+row('신청일',fmtDate(f.RequestDate))+
+      row('상태','<span class="badge-'+(f.Status||'대기')+'">'+(f.Status||'대기')+'</span>')+row('신청일',fmtDate(f.RequestDate))+
       sec('상세 내용')+(f.RequestTitle?`<div class="det-row"><span class="det-lbl">요청 제목</span><span class="det-val" style="white-space:pre-wrap">${f.RequestTitle}</span></div>`:'')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${f.Description||'-'}</span></div>`+
       sec('첨부파일')+filesHtml+
       sec('결재 이력')+'<div style="background:#f9f9f9;border-radius:4px;border:1px solid #edebe9">'+apprHtml+'</div>'+
