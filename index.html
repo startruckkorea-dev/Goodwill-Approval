@@ -505,6 +505,23 @@ function escHtml(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// ── SharePoint 다중 텍스트 필드 정리 ──
+// 여러 줄 텍스트는 <div class="ExternalClass...">본문</div> 형태로 감싸여 저장된다.
+// 이걸 그대로 escHtml에 넘기면 래퍼 태그가 화면에 글자로 찍힌다.
+// 줄바꿈 태그를 개행으로 바꾼 뒤 태그를 걷어내고 엔티티를 되돌린다.
+// 반환값은 평문이므로, innerHTML에 넣을 때는 반드시 escHtml()을 다시 거쳐야 한다.
+function spText(s){
+  return String(s == null ? '' : s)
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\/\s*(div|p|li|tr)\s*>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 // ── Constants ──
 const CLIENT_ID  = '432976c2-b43a-492e-8213-ece505fa1f51';
 const TENANT_ID  = '19cab1f5-21f4-44df-8ac6-96d6ca595203';
@@ -1651,7 +1668,7 @@ async function showDetail(id){
       row('제목',f.Title)+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
       row('Source',f.Source)+row('Amount',fmtGWAmount(f.Amount))+row('Type',f.GoodwillType)+
       row('상태','<span class="badge-'+(f.Status||'대기')+'">'+(f.Status||'대기')+'</span>')+row('신청일',fmtDate(f.RequestDate))+
-      sec('상세 내용')+(f.RequestTitle?`<div class="det-row"><span class="det-lbl">요청 제목</span><span class="det-val" style="white-space:pre-wrap">${escHtml(f.RequestTitle)}</span></div>`:'')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${escHtml(f.Description||'-')}</span></div>`+
+      sec('상세 내용')+(f.RequestTitle?`<div class="det-row"><span class="det-lbl">요청 제목</span><span class="det-val" style="white-space:pre-wrap">${escHtml(spText(f.RequestTitle))}</span></div>`:'')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${escHtml(spText(f.Description)||'-')}</span></div>`+
       sec('첨부파일')+filesHtml+
       sec('결재 이력')+'<div style="background:#f9f9f9;border-radius:4px;border:1px solid #edebe9">'+apprHtml+'</div>'+
       (myPending?`<div class="proc-btns" style="margin-top:14px"><button class="btn-approve" onclick="showConfirm(${myPending.id},'승인',${id})">✅ 승인</button><button class="btn-reject" onclick="showConfirm(${myPending.id},'반려',${id})">❌ 반려</button></div>`:'');
@@ -1792,7 +1809,7 @@ function openUniDetail(apprId) {
     rows +
     '<tr><td style="color:#605e5c;padding:5px 0;border-bottom:1px solid #f3f2f1">상태</td><td style="padding:5px 0;border-bottom:1px solid #f3f2f1;font-weight:600;color:'+(sc[rf.Status]||'#323130')+'">'+(rf.Status||'-')+'</td></tr>' +
     '<tr><td style="color:#605e5c;padding:5px 0;border-bottom:1px solid #f3f2f1">신청일</td><td style="padding:5px 0;border-bottom:1px solid #f3f2f1">'+fmt(rf.RequestDate)+'</td></tr>' +
-    (rf.Description ? '<tr><td style="color:#605e5c;padding:5px 0;vertical-align:top">설명</td><td style="padding:5px 0;white-space:pre-wrap;font-size:.75rem;color:#323130">'+rf.Description+'</td></tr>' : '') +
+    (rf.Description ? '<tr><td style="color:#605e5c;padding:5px 0;vertical-align:top">설명</td><td style="padding:5px 0;white-space:pre-wrap;font-size:.75rem;color:#323130">'+escHtml(spText(rf.Description))+'</td></tr>' : '') +
     '</table>' +
     '<div style="font-size:.72rem;font-weight:600;color:#0078d4;background:#f0f6ff;border-left:3px solid #0078d4;padding:5px 10px;border-radius:4px;margin-bottom:8px">결재 현황</div>' +
     '<div style="background:#f9f9f9;border-radius:6px;border:1px solid #edebe9;overflow:hidden;margin-bottom:14px">' +
