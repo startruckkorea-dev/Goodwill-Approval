@@ -621,11 +621,21 @@ function logAction(systemName, action, detail) {
     } catch(e) { console.warn('[Log] 기록 실패(무시됨):', e.message); }
   })();
 }
-async function api(path,method='GET',body=null){
+async function api(path,method='GET',body=null,_retry=0){
   const t=await token();
   const opts={method,headers:{Authorization:'Bearer '+t,'Content-Type':'application/json',Prefer:'HonorNonIndexedQueriesWarningMayFailRandomly'}};
   if(body)opts.body=JSON.stringify(body);
   const res=await fetch(GRAPH+path,opts);
+  // SharePoint 스로틀(429)·일시 장애(503/504)는 잠시 뒤 다시 시도한다.
+  // 재시도가 없으면 신청처럼 여러 건을 연속으로 쓰는 작업이 중간에 끊겨
+  // 신청서만 남고 결재선이 없는 상태가 된다(ID-153 사례).
+  if(!res.ok && [429,503,504].includes(res.status) && _retry < 3){
+    const ra = parseInt(res.headers.get('Retry-After')||'0',10);
+    const wait = ra>0 ? ra*1000 : Math.pow(2,_retry)*800;   // 0.8s → 1.6s → 3.2s
+    console.warn(`[API] ${res.status} 재시도 ${_retry+1}/3 (${wait}ms 후): ${path.slice(0,60)}`);
+    await new Promise(r=>setTimeout(r,wait));
+    return api(path,method,body,_retry+1);
+  }
   if(!res.ok)throw new Error((await res.json())?.error?.message||res.status);
   return res.status===204?null:res.json();
 }
@@ -1068,15 +1078,40 @@ async function submitForm(){
         approvers.push({name,email,order,role:(order)+'차결재자('+ROLE_LABELS[role]+')'});
       }
     });
-    for(const a of approvers){
-      await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items','POST',{fields:{
-        Title:'GW-'+new Date(new Date().getTime()+9*3600*1000).toISOString().slice(0,10)+'_ID-'+reqId+'-'+a.order, RequestID:reqId,
-        ApproverEmail:a.email, ApproverName:a.name,
-        ApproverRole:a.role, ApprovalOrder:a.order,
-        Status:a.order===1?'대기':'대기(잠김)'
-      }});
+    // 결재선 생성 — 여기서 중간에 끊기면 신청서만 남고 결재가 진행되지 않는 교착 상태가 된다.
+    // 부분 생성은 더 위험하다: 만들어진 단계까지만 결재된 뒤 '승인완료'로 마감되어 남은 결재자를 건너뛴다.
+    // 그래서 실패하면 신청을 철회 처리해 결재 흐름에서 빼고 재신청을 안내한다.
+    const _gwVid = 'GW-'+new Date(new Date().getTime()+9*3600*1000).toISOString().slice(0,10)+'_ID-'+reqId;
+    let _made = 0;
+    try {
+      for(const a of approvers){
+        await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items','POST',{fields:{
+          Title:_gwVid+'-'+a.order, RequestID:reqId,
+          ApproverEmail:a.email, ApproverName:a.name,
+          ApproverRole:a.role, ApprovalOrder:a.order,
+          Status:a.order===1?'대기':'대기(잠김)'
+        }});
+        _made++;
+      }
+    } catch(ae) {
+      console.error('[신청] 결재선 생성 실패:', ae && ae.message);
+      await gwRollbackIncomplete(reqId, _gwVid, _made, approvers.length);
+      return;
     }
-    showAlert('신청이 완료되었습니다.', 'GW-'+new Date(new Date().getTime()+9*3600*1000).toISOString().slice(0,10)+'_ID-'+reqId);
+    // 만들어진 행 수를 서버에서 다시 세어 확인한다(POST가 200을 받고도 반영되지 않는 경우까지 잡음)
+    try {
+      const _chk = await apiAll('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=50&$filter=fields/RequestID eq '+parseInt(reqId));
+      const _cnt = (_chk.value||[]).length;
+      if(_cnt < approvers.length){
+        console.error('[신청] 결재선 개수 불일치:', _cnt, '/', approvers.length);
+        await gwRollbackIncomplete(reqId, _gwVid, _cnt, approvers.length);
+        return;
+      }
+    } catch(ce) {
+      // 검증 조회 자체가 실패한 경우 — 생성은 됐을 수 있으므로 되돌리지 않는다
+      console.warn('[신청] 결재선 검증 조회 실패(생성은 완료됨):', ce && ce.message);
+    }
+    showAlert('신청이 완료되었습니다.', _gwVid);
     resetForm(); switchTab('list');
   }catch(e){showAlert('오류가 발생했습니다.', e.message, '⚠️');}
   finally{loading(false);}
@@ -1619,7 +1654,11 @@ async function showDetail(id){
       row('상태','<span class="badge-'+(f.Status||'대기')+'">'+(f.Status||'대기')+'</span>')+row('신청일',fmtDate(f.RequestDate))+
       sec('상세 내용')+(f.RequestTitle?`<div class="det-row"><span class="det-lbl">요청 제목</span><span class="det-val" style="white-space:pre-wrap">${escHtml(spText(f.RequestTitle))}</span></div>`:'')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${escHtml(spText(f.Description)||'-')}</span></div>`+
       sec('첨부파일')+filesHtml+
-      sec('결재 이력')+'<div style="background:#f9f9f9;border-radius:4px;border:1px solid #edebe9">'+apprHtml+'</div>'+
+      sec('결재 이력')+'<div style="background:#f9f9f9;border-radius:4px;border:1px solid #edebe9">'+
+      (apprList.length ? apprHtml :
+        '<div style="padding:12px;font-size:.78rem;line-height:1.6;color:#a4262c">결재선이 생성되지 않은 신청입니다.<br>'+
+        '<span style="color:#605e5c">신청 처리 중 오류로 결재자가 등록되지 않아 결재가 진행되지 않습니다. 철회 후 다시 신청해 주세요.</span></div>')
+      +'</div>'+
       (myPending?`<div class="proc-btns" style="margin-top:14px"><button class="btn-approve" onclick="showConfirm(${myPending.id},'승인',${id})">✅ 승인</button><button class="btn-reject" onclick="showConfirm(${myPending.id},'반려',${id})">❌ 반려</button></div>`:'');
 
     // 파일 다운로드 이벤트
@@ -1725,6 +1764,29 @@ function dynLoadEnd() {
 
 
 // ── Withdraw (철회) ──────────────────────────────
+// 결재선이 불완전하게 만들어진 신청을 결재 흐름에서 빼낸다.
+// 삭제하지 않는 이유: 감사 흔적을 남기고, 이미 올라간 첨부파일도 보존하기 위함.
+// '철회'는 기존에 쓰던 상태값이라 APS·목록·통계가 이미 종료 건으로 처리한다.
+async function gwRollbackIncomplete(reqId, vid, made, total){
+  let ok = false;
+  try {
+    try {
+      const rows = await apiAll('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=50&$filter=fields/RequestID eq '+parseInt(reqId));
+      for(const it of (rows.value||[])){
+        await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+it.id, 'PATCH', {fields:{Status:'철회(잠김)'}});
+      }
+    } catch(e){ console.warn('[신청] 결재 행 잠금 실패:', e && e.message); }
+    await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId, 'PATCH', {fields:{Status:'철회'}});
+    ok = true;
+  } catch(e){ console.error('[신청] 자동 철회 실패:', e && e.message); }
+
+  if(ok) showAlert('신청을 완료하지 못했습니다',
+    `결재선이 ${made}/${total}단계만 만들어져 이 신청(${vid})은 자동으로 철회 처리했습니다. 결재는 시작되지 않았으니 다시 신청해 주세요.`, '⚠️');
+  else showAlert('신청을 완료하지 못했습니다',
+    `결재선이 ${made}/${total}단계만 만들어졌고 자동 철회에도 실패했습니다. 다시 신청하지 마시고 IT팀(stk_it@hyosung.com)에 ${vid}를 알려주세요.`, '⚠️');
+  loadMyList();
+}
+
 async function withdrawRequest(e, reqId, aprList, reqList) {
   e.stopPropagation();
   if(!confirm('신청을 철회하시겠습니까?\n철회 후에는 되돌릴 수 없습니다.')) return;
@@ -1733,13 +1795,22 @@ async function withdrawRequest(e, reqId, aprList, reqList) {
     const myAprs = aprData.value;
     const sorted = myAprs.sort((a,b)=>(a.fields.ApprovalOrder||0)-(b.fields.ApprovalOrder||0));
     const firstSt = (sorted[0]?.fields?.Status?.Value || sorted[0]?.fields?.Status || '').trim();
-    if(firstSt !== '대기') {
+    // 철회 가능 여부는 "결재가 실제로 진행됐는가"로 판단한다.
+    //  · 결재선이 아예 없음 → 신청 처리가 중간에 끊긴 건. 예전에는 firstSt가 ''가 되어 철회까지 막혀
+    //    승인·반려·철회 세 경로가 모두 닫힌 교착 상태가 됐다(ID-153 사례).
+    //  · '대기'      → 아직 아무도 처리하지 않음. 정상 철회
+    //  · '철회(잠김)' → 이전 철회가 중간에 끊긴 상태. 남은 단계를 마저 처리해 복구한다.
+    //  · '승인'/'반려' → 이미 결재가 진행됨. 철회 불가
+    const RESUMABLE = ['대기', '철회(잠김)'];
+    if(sorted.length && !RESUMABLE.includes(firstSt)) {
       if(typeof showAlert === 'function') showAlert('철회 불가','이미 결재가 진행된 신청은 철회할 수 없습니다.','⚠️');
       else alert('이미 결재가 진행된 신청은 철회할 수 없습니다.');
       return;
     }
-    await Promise.all(myAprs.map(i =>
-      api('/sites/'+siteId+'/lists/'+aprList+'/items/'+i.id, 'PATCH', {fields:{Status:'철회(잠김)'}})
+    // 이미 처리된 행은 건너뛴다 — 몇 번을 다시 눌러도 결과가 같다.
+    await Promise.all(myAprs
+      .filter(i => (i.fields?.Status?.Value || i.fields?.Status || '').trim() !== '철회(잠김)')
+      .map(i => api('/sites/'+siteId+'/lists/'+aprList+'/items/'+i.id, 'PATCH', {fields:{Status:'철회(잠김)'}})
     ));
     await api('/sites/'+siteId+'/lists/'+reqList+'/items/'+reqId, 'PATCH', {fields:{Status:'철회'}});
     if(typeof showAlert === 'function') showAlert('철회 완료','신청이 철회되었습니다.','✅');
