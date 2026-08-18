@@ -775,7 +775,10 @@ async function boot(account){
   } catch(e){ alert('SharePoint 연결 오류: '+e.message); }
 
   // 배지 자동 갱신 (60초마다)
-  setInterval(function(){ try{loadApprovalBadge();}catch(e){} }, 60000);
+  // 2026-05-25 도입 당시 존재하지 않는 함수명(loadApprovalBadge)을 호출하고 있어 실제로는 동작하지 않았다.
+  // try/catch가 ReferenceError를 삼켜 증상이 드러나지 않았고, 결재함 탭을 열 때마다 배지가 다시 계산되어
+  // 평소 사용에서는 정상으로 보였다. 실제 정의된 함수인 checkApprovalBadge()로 교정한다.
+  setInterval(function(){ try{ checkApprovalBadge(); }catch(e){ console.warn('[Badge] 자동 갱신 실패:', e.message); } }, 60000);
 }
 // ── MSAL Init ──
 window.addEventListener('load', async () => {
@@ -1710,9 +1713,10 @@ async function checkApprovalBadge(){
     const data=await apiAll('/sites/'+siteId+'/lists/'+LIST_APR+"/items?$expand=fields&$top=500&$filter=fields/Status eq '대기'");
     const mine=data.value.filter(i=>(e=>(e===(user.email||'').toLowerCase()||e===(user.username||'').toLowerCase()))((i.fields.ApproverEmail||'').toLowerCase()));
     const badge=document.getElementById('appr-badge');
+    if(!badge) return;
     if(mine.length){badge.textContent=mine.length;badge.style.display='inline';}
     else badge.style.display='none';
-  }catch(e){}
+  }catch(e){ console.warn('[Badge] 조회 실패:', e.message); }  // 빈 catch로 두면 이번 같은 조용한 실패를 또 놓친다
 }
 
 // ── Dynamic Loading ──
