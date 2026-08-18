@@ -1167,7 +1167,7 @@ async function loadMyList(){
     const data=await apiAll('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500');
     const mine=data.value.filter(i=>(i.fields.RequesterEmail||'').toLowerCase()===(user.email||'').toLowerCase()).sort((a,b)=>b.id-a.id);
     dynLoadEnd(); pgSet('list',mine,(item,idx)=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#0078d4;font-weight:600;text-align:center">${idx+1}</td><td style="font-size:.78rem;color:#0078d4;max-width:160px;overflow:hidden;text-overflow:ellipsis">${f.Title||'-'}</td><td><span class="badge-type">${f.Source||''}</span></td><td style="font-size:.82rem">${f.GoodwillType||''}</td><td style="font-size:.82rem;text-align:right">${fmtGWAmount(f.Amount)}</td><td style="text-align:center"><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td style="font-size:.82rem;color:#605e5c">${fmtDate(f.RequestDate)}</td><td style="text-align:center;vertical-align:middle;padding:4px 6px">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, '신청 내역이 없습니다.', 8);
-  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
 }
 
 // ── Approval Queue ──
@@ -1191,7 +1191,7 @@ async function loadApprovalQueue(){
     });
     dynLoadEnd(); pgSet('appr',rows,r=>r,'결재 대기 항목이 없습니다.',8);
     const badge=document.getElementById('appr-badge');badge.textContent=mine.length;badge.style.display=mine.length?'inline':'none';
-  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
 }
 
 // ── Process Approval ──
