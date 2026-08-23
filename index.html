@@ -1601,7 +1601,8 @@ async function showDetail(id){
     const row=(l,v)=>`<div class="det-row"><span class="det-lbl">${l}</span><span class="det-val">${v||'-'}</span></div>`;
 
     // 첨부파일
-    let filesHtml='<div style="font-size:.8rem;color:#605e5c">첨부파일 없음</div>';
+    // 첨부가 없을 때는 「결재 이력이 없습니다.」와 같은 규칙(가운데 정렬 · 패딩)으로 표시한다.
+    let filesHtml='<div style="padding:12px;text-align:center;color:#a19f9d;font-size:.78rem">첨부파일이 없습니다.</div>';
     if(f.AttachedFiles){
       // SharePoint가 여러 줄 텍스트를 <div>...</div>로 감싸서 반환 → HTML 태그 제거
       let cleanFiles = f.AttachedFiles;
