@@ -33,13 +33,13 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
    APS 전 시스템에 같은 모양으로 쓰기 위해 시스템 이름을 넣지 않은 클래스로 둔다.
    연락처는 여러 줄이 그냥 나열돼 있어 제목·본문과 구분되지 않았다.
    연한 파란 프레임으로 묶어 「문의처」라는 하나의 덩어리로 읽히게 한다. */
-.hdr-contact{display:inline-flex;flex-direction:column;gap:3px;margin-top:10px;
-  background:#f4f8fd;border:1px solid #dbe7f5;border-radius:10px;padding:9px 14px 9px 12px}
-.hdr-contact-row{display:flex;align-items:center;gap:8px;font-size:.72rem;line-height:1.5;color:#5a6472}
-/* 역할 배지 — 폭을 고정해 여러 줄의 이메일 시작 위치가 세로로 맞는다 */
-.hdr-contact-tag{flex-shrink:0;min-width:46px;text-align:center;
-  background:#e3edfa;color:#2b5c9e;border-radius:5px;padding:1px 7px;
-  font-size:.66rem;font-weight:700;letter-spacing:.02em}
+.hdr-contact{display:inline-flex;flex-direction:column;gap:1px;margin-top:8px;
+  background:#f4f8fd;border:1px solid #dbe7f5;border-radius:8px;padding:6px 12px 6px 10px}
+.hdr-contact-row{display:flex;align-items:center;gap:7px;font-size:.7rem;line-height:1.42;color:#5a6472}
+/* 라벨이 「BU Admin」 또는 「BU Admin(GL)」 로 길이가 달라, 폭을 고정하는 대신
+   구분선 하나로 나눈다. 폭을 고정하면 가장 긴 라벨에 맞춰 빈 칸이 크게 남는다. */
+.hdr-contact-tag{flex-shrink:0;color:#2b5c9e;font-size:.68rem;font-weight:700;letter-spacing:-.01em;
+  padding-right:7px;border-right:1px solid #cfdff2}
 .hdr-contact-mail{color:#3d4756;font-weight:500}
 .hdr-contact-mail a{color:#2b5c9e;text-decoration:none}
 .hdr-contact-mail a:hover{text-decoration:underline}
@@ -223,11 +223,11 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
       <div class="app-sub">Goodwill / Tech-Care / CCR / Courtesy 결재 시스템</div>
       <div class="hdr-contact" id="hdr-contact">
         <div class="hdr-contact-row">
-          <span class="hdr-contact-tag">Sales</span>
+          <span class="hdr-contact-tag">BU Admin(Sales)</span>
           <span class="hdr-contact-mail" id="gw-contact-sales">-</span>
         </div>
         <div class="hdr-contact-row">
-          <span class="hdr-contact-tag">CSP</span>
+          <span class="hdr-contact-tag">BU Admin(CSP)</span>
           <span class="hdr-contact-mail" id="gw-contact-csp">-</span>
         </div>
       </div>
