@@ -28,6 +28,27 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 .app-header{background:#fff;border-radius:8px;padding:18px 24px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .app-title{font-size:1.1rem;font-weight:700;color:#323130}
 .app-sub{font-size:.72rem;color:#605e5c;margin-top:3px}
+
+/* ── 헤더 · BU Admin 연락처 / 계정 정보 ─────────────────────────────
+   APS 전 시스템에 같은 모양으로 쓰기 위해 시스템 이름을 넣지 않은 클래스로 둔다.
+   연락처는 여러 줄이 그냥 나열돼 있어 제목·본문과 구분되지 않았다.
+   연한 파란 프레임으로 묶어 「문의처」라는 하나의 덩어리로 읽히게 한다. */
+.hdr-contact{display:inline-flex;flex-direction:column;gap:3px;margin-top:10px;
+  background:#f4f8fd;border:1px solid #dbe7f5;border-radius:10px;padding:9px 14px 9px 12px}
+.hdr-contact-row{display:flex;align-items:center;gap:8px;font-size:.72rem;line-height:1.5;color:#5a6472}
+/* 역할 배지 — 폭을 고정해 여러 줄의 이메일 시작 위치가 세로로 맞는다 */
+.hdr-contact-tag{flex-shrink:0;min-width:46px;text-align:center;
+  background:#e3edfa;color:#2b5c9e;border-radius:5px;padding:1px 7px;
+  font-size:.66rem;font-weight:700;letter-spacing:.02em}
+.hdr-contact-mail{color:#3d4756;font-weight:500}
+.hdr-contact-mail a{color:#2b5c9e;text-decoration:none}
+.hdr-contact-mail a:hover{text-decoration:underline}
+
+/* 계정 정보 — 이름과 이메일을 한 줄에 붙여 쓰던 것을 위아래로 나눈다.
+   이름은 진하게, 이메일은 옅게 두어 한눈에 구분된다. */
+.hdr-user{display:flex;flex-direction:column;align-items:flex-end;line-height:1.35}
+.hdr-user-name{font-size:.8rem;font-weight:600;color:#323130}
+.hdr-user-mail{font-size:.7rem;color:#8a8886}
 .btn-logout{background:#fff;border:1px solid #d2d0ce;border-radius:4px;padding:5px 14px;font-size:.78rem;cursor:pointer;color:#323130}
 .btn-logout:hover{background:#f3f2f1}
 /* Tabs */
@@ -200,14 +221,20 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
     <div>
       <div class="app-title">STK Goodwill Approval</div>
       <div class="app-sub">Goodwill / Tech-Care / CCR / Courtesy 결재 시스템</div>
-      <div style="font-size:11px;color:#605e5c;margin-top:4px">
-        <div id="gw-contact-sales">BU Admin(Sales 관련) 문의 Email: </div>
-        <div id="gw-contact-csp">BU Admin(CSP 관련) 문의 Email: </div>
+      <div class="hdr-contact" id="hdr-contact">
+        <div class="hdr-contact-row">
+          <span class="hdr-contact-tag">Sales</span>
+          <span class="hdr-contact-mail" id="gw-contact-sales">-</span>
+        </div>
+        <div class="hdr-contact-row">
+          <span class="hdr-contact-tag">CSP</span>
+          <span class="hdr-contact-mail" id="gw-contact-csp">-</span>
+        </div>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
-        <span id="user-name" style="font-size:.8rem;color:#605e5c"></span>
+        <span id="user-name" class="hdr-user"></span>
         <button class="btn-logout" onclick="signOut()">로그아웃</button>
       </div>
       <a href="https://aps.startruckkorea.com/" target="_self" title="STK 통합 결재함" style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;background:#0078d4;color:#fff;border-radius:6px;padding:7px 14px;font-size:.8rem;font-weight:600;font-family:'Segoe UI',sans-serif;letter-spacing:-.2px;box-shadow:0 1px 4px rgba(0,120,212,.25);transition:background .15s" onmouseover="this.style.background='#106ebe'" onmouseout="this.style.background='#0078d4'"><span style="font-size:1rem;line-height:1">📬</span><span>돌아가기</span></a>
@@ -531,6 +558,31 @@ async function signIn() {
     await msal_g.loginRedirect({scopes:SCOPES});
   } catch(e){ showLoginError(e.message); }
 }
+
+// ── 헤더 표시 헬퍼 (APS 공통) ─────────────────────────────────────────
+// 값은 설정 파일에서 오지만 화면에 그대로 넣지 않는다. 링크의 href 와 본문 모두
+// 이스케이프해 넣는다(설정이 바뀌어도 화면이 깨지거나 태그가 살아나지 않게).
+function setHdrContact(id, email){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const v = String(email || '').trim();
+  if (!v) { el.textContent = '-'; return; }
+  const a = document.createElement('a');
+  a.href = 'mailto:' + v;
+  a.textContent = v;
+  el.textContent = '';
+  el.appendChild(a);
+}
+function setHdrUser(name, mail){
+  const el = document.getElementById('user-name');
+  if (!el) return;
+  el.classList.add('hdr-user');
+  el.textContent = '';
+  const n = document.createElement('span'); n.className = 'hdr-user-name'; n.textContent = String(name || '');
+  const m = document.createElement('span'); m.className = 'hdr-user-mail'; m.textContent = String(mail || '');
+  el.appendChild(n); el.appendChild(m);
+}
+
 function signOut(){ msal_g.logoutRedirect(); }
 function showLoginError(msg){ const el=document.getElementById('login-err'); el.textContent=msg; el.style.display='block'; }
 
@@ -707,7 +759,7 @@ async function boot(account){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('app').style.maxWidth='960px'; // 신청서 작성 탭 기본 너비
-  document.getElementById('user-name').textContent=(account.name||account.username)+' ('+(account.username)+')'
+  setHdrUser(account.name || account.username, account.username)
   try {
     try {
       const me = await api('/me?$select=mail,userPrincipalName');
@@ -722,8 +774,10 @@ async function boot(account){
       // Sales/CSP 문의 이메일
       const _gwSales=cfgVal(_cfg,'GW_CONTACT_Sales',cfgVal(_cfg,'GW_CONTACT',{email:''}));
       const _gwCSP  =cfgVal(_cfg,'GW_CONTACT_CSP',  cfgVal(_cfg,'GW_CONTACT',{email:''}));
-      const _gwSalesEl=document.getElementById('gw-contact-sales');if(_gwSalesEl)_gwSalesEl.textContent='BU Admin(Sales 관련) 문의 Email: '+(_gwSales.email||'-');
-      const _gwCSPEl  =document.getElementById('gw-contact-csp');  if(_gwCSPEl)  _gwCSPEl.textContent='BU Admin(CSP 관련) 문의 Email: '+(_gwCSP.email||'-');
+      // 역할 이름은 마크업의 배지가 담당한다. 여기서는 이메일만 채운다.
+      // 메일 앱으로 바로 열 수 있게 링크로 넣되, 값이 없으면 링크 없이 '-' 만 둔다.
+      setHdrContact('gw-contact-sales', _gwSales.email);
+      setHdrContact('gw-contact-csp',   _gwCSP.email);
       // 관리자: GW_ADMIN_1~5 모두 읽기
       const _adminList = cfgEmails(_cfg,['GW_ADMIN_1','ADMIN_SP']); // GW_ADMIN_N 패턴 자동 확장 (1~N 무한)
       if(_adminList.length) ADMIN_EMAILS.splice(0,ADMIN_EMAILS.length,..._adminList);
