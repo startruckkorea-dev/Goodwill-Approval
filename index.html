@@ -770,7 +770,7 @@ async function boot(account){
     const _cfg = await loadSystemConfig();
     if (_cfg) {
       const _contact = cfgVal(_cfg,'GW_CONTACT',cfgVal(_cfg,'CONTACT_EMAIL',{email:''}));
-      const _gwCEl=document.getElementById('gw-contact-email');if(_gwCEl)_gwCEl.textContent='문의 Email: '+_contact.email;
+      // (gw-contact-email 은 마크업에 없는 옛 id 였다. 연락처는 위 setHdrContact 가 채운다)
       // Sales/CSP 문의 이메일
       const _gwSales=cfgVal(_cfg,'GW_CONTACT_Sales',cfgVal(_cfg,'GW_CONTACT',{email:''}));
       const _gwCSP  =cfgVal(_cfg,'GW_CONTACT_CSP',  cfgVal(_cfg,'GW_CONTACT',{email:''}));
