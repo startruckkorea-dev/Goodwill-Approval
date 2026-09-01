@@ -144,13 +144,19 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 #tab-list .list-table td.c-type{white-space:nowrap;font-size:.68rem}
 /* 배지는 안에서 줄바꿈되면 알약 모양이 깨진다. 열 폭을 배지에 맞춰 두었으므로 막는다. */
 #tab-admin .list-table .badge-type,#tab-appr .list-table .badge-type,
-#tab-list .list-table .badge-type{white-space:nowrap;font-size:.66rem}
+#tab-list .list-table .badge-type,
+#tab-admin .list-table .badge-type-sales,#tab-appr .list-table .badge-type-sales,
+#tab-list .list-table .badge-type-sales{white-space:nowrap;font-size:.66rem}
 #tab-admin .list-table td,#tab-appr .list-table td,#tab-list .list-table td{white-space:nowrap}
 /* 금액은 자릿수를 맞춰 세로로 읽히게 한다. */
 #tab-admin .list-table td.c-amt,#tab-appr .list-table td.c-amt,
 #tab-list .list-table td.c-amt{font-variant-numeric:tabular-nums;font-size:.7rem}
 /* Badge */
 .badge-type{background:#e1f0ff;color:#0078d4;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
+/* Source 는 CSP 계열(Local CSP / Local CSP Van / Market)과 Sales 두 갈래다.
+   Sales 만 색을 달리해 목록에서 한눈에 갈린다. 노랑은 「대기」 배지와 같은
+   값을 써서 이 화면 안에서 쓰는 색 수를 늘리지 않는다. */
+.badge-type-sales{background:#fff4ce;color:#7d5700;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
 .badge-대기{background:#fff4ce;color:#7d5700;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
 .badge-승인완료{background:#dff6dd;color:#107c10;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
 .badge-반려{background:#fde7e9;color:#a4262c;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
@@ -1364,7 +1370,7 @@ function renderMyList(){
     ? '필터 '+items.length+'건 / 전체 '+myListRaw.length+'건'
     : '총 '+myListRaw.length+'건';
 
-  pgSet('list',items,(item,idx)=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem;text-align:center">${idx+1}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="badge-type">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt" style="text-align:right">${fmtGWAmount(f.Amount)}</td><td style="text-align:center"><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td style="font-size:.82rem;color:#605e5c">${fmtDate(f.RequestDate)}</td><td style="text-align:center;vertical-align:middle;padding:4px 6px">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, (status||source||amount||kw)?'조회 결과가 없습니다.':'신청 내역이 없습니다.', 9);
+  pgSet('list',items,(item,idx)=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem;text-align:center">${idx+1}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt" style="text-align:right">${fmtGWAmount(f.Amount)}</td><td style="text-align:center"><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td style="font-size:.82rem;color:#605e5c">${fmtDate(f.RequestDate)}</td><td style="text-align:center;vertical-align:middle;padding:4px 6px">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, (status||source||amount||kw)?'조회 결과가 없습니다.':'신청 내역이 없습니다.', 9);
 }
 
 // 신청의 「요청 제목」 한 줄. 상세 화면의 RequestTitle 과 같은 값이다.
@@ -1384,6 +1390,13 @@ function reqTitleOf(f) {
 
 // 목록 셀 하나. 값이 없으면 흐린 「-」 로 둔다 —
 // 빈칸이면 값이 안 온 건지 원래 없는 건지 구분되지 않는다.
+// Source 배지 색을 정한다. Sales 만 노랑, 나머지(Local CSP · Local CSP Van ·
+// Market Goodwill)는 기존 파랑 그대로. 값이 늘어나도 Sales 가 들어간 것만
+// 갈리도록 포함 여부로 판정한다.
+function gwSourceCls(src) {
+  return /sales/i.test(String(src || '')) ? 'badge-type-sales' : 'badge-type';
+}
+
 function reqTitleCell(f) {
   const v = reqTitleOf(f);
   // max-width 는 table-layout:fixed 아래에서 무시되므로 뺀다. 폭은 헤더가 정한다.
@@ -1410,7 +1423,7 @@ async function loadApprovalQueue(){
     const mine=Object.values(_dedupMap).sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
     const rows=mine.map(item=>{
       const f=item.fields,rf=reqMap[String(f.RequestID)]||{};
-      return`<tr onclick="showDetail(${f.RequestID})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem">${f.RequestID}</td><td class="c-mail" title="${escHtml(rf.RequesterEmail||'')}">${escHtml(rf.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(rf.Title||'')}">${escHtml(rf.Title||'-')}</td>${reqTitleCell(rf)}<td><span class="badge-type">${escHtml(rf.Source||'')}</span></td><td class="c-type" title="${escHtml(rf.GoodwillType||'')}">${escHtml(rf.GoodwillType||'')}</td><td class="c-amt">${fmtGWAmount(rf.Amount)}</td><td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
+      return`<tr onclick="showDetail(${f.RequestID})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem">${f.RequestID}</td><td class="c-mail" title="${escHtml(rf.RequesterEmail||'')}">${escHtml(rf.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(rf.Title||'')}">${escHtml(rf.Title||'-')}</td>${reqTitleCell(rf)}<td><span class="${gwSourceCls(rf.Source)}">${escHtml(rf.Source||'')}</span></td><td class="c-type" title="${escHtml(rf.GoodwillType||'')}">${escHtml(rf.GoodwillType||'')}</td><td class="c-amt">${fmtGWAmount(rf.Amount)}</td><td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
     });
     dynLoadEnd(); pgSet('appr',rows,r=>r,'결재 대기 항목이 없습니다.',10);
     const badge=document.getElementById('appr-badge');badge.textContent=mine.length;badge.style.display=mine.length?'inline':'none';
@@ -1597,7 +1610,7 @@ function renderAdminList(){
            (f.GoodwillType||'').toLowerCase().includes(kw);
   });
   document.getElementById('admin-count').textContent='총 '+items.length+'건';
-  pgSet('admin',items,(item,idx)=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(f.RequesterEmail||'')}">${escHtml(f.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="badge-type">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt">${fmtGWAmount(f.Amount)}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',9);
+  pgSet('admin',items,(item,idx)=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(f.RequesterEmail||'')}">${escHtml(f.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt">${fmtGWAmount(f.Amount)}</td><td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',9);
 }
 
 // ── Detail Modal ──
