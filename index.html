@@ -1432,7 +1432,7 @@ function renderMyList(){
     ? '필터 '+items.length+'건 / 전체 '+myListRaw.length+'건'
     : '총 '+myListRaw.length+'건';
 
-  pgSet('list',items,(item,idx)=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem;text-align:center">${idx+1}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt" style="text-align:right">${fmtGWAmount(f.Amount)}</td>${gwAmountValueCell(f)}<td style="text-align:center"><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td style="font-size:.82rem;color:#605e5c">${fmtDate(f.RequestDate)}</td><td style="text-align:center;vertical-align:middle;padding:4px 6px">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, (status||source||amount||kw)?'조회 결과가 없습니다.':'신청 내역이 없습니다.', 10);
+  pgSet('list',items,(item,idx)=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem;text-align:center">${idx+1}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt">${fmtGWAmount(f.Amount)}</td>${gwAmountValueCell(f)}<td style="text-align:center"><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td style="font-size:.82rem;color:#605e5c">${fmtDate(f.RequestDate)}</td><td style="text-align:center;vertical-align:middle;padding:4px 6px">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, (status||source||amount||kw)?'조회 결과가 없습니다.':'신청 내역이 없습니다.', 10);
 }
 
 // 신청의 「요청 제목」 한 줄. 상세 화면의 RequestTitle 과 같은 값이다.
@@ -1475,7 +1475,9 @@ function gwFileList(v) {
 
 function gwAmountValueCell(f) {
   const d = amountDigits(f && f.AmountValue);
-  return '<td class="c-amt" style="text-align:right">'
+  // 머리글이 좌측이므로 값도 좌측으로 둔다. 우측이면 열마다 시작점이 달라
+   // 눈이 세로로 훑을 기준선이 여러 개가 된다.
+  return '<td class="c-amt">'
        + (d ? Number(d).toLocaleString('ko-KR') : '<span style="color:#c8c6c4">-</span>')
        + '</td>';
 }
