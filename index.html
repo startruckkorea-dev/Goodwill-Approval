@@ -317,7 +317,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
               </select>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px">
-              <label>Amount (VAT Excluded) <span class="req-mark">*</span></label>
+              <label>Amount <span style="font-size:.72em;color:#605e5c;font-weight:400">(VAT Excluded)</span> <span class="req-mark">*</span></label>
               <input type="text" id="f-amount-value" inputmode="numeric" autocomplete="off"
                      placeholder="ex 4,750,000" oninput="onAmountValueInput()">
             </div>
@@ -2033,7 +2033,7 @@ async function showDetail(id){
       row('Source',f.Source)+row('Amount type',fmtGWAmount(f.Amount))+
       // AmountValue 가 생기기 전의 기존 건은 값이 없다. 없는 값을 구간 하한으로
       // 채워 넣으면 실제 입력 금액과 구분되지 않으므로 「-」 로 둔다.
-      row('Amount (VAT Excluded)', f.AmountValue ? Number(amountDigits(f.AmountValue)).toLocaleString('ko-KR')+' 원' : '-')+
+      row('Amount <span style="font-size:.72em;color:#605e5c;font-weight:400">(VAT Excluded)</span>', f.AmountValue ? Number(amountDigits(f.AmountValue)).toLocaleString('ko-KR')+' 원' : '-')+
       row('Type',f.GoodwillType)+
       sec('상세 내용')+(f.RequestTitle?`<div class="det-row"><span class="det-lbl">요청 제목</span><span class="det-val" style="white-space:pre-wrap">${escHtml(spText(f.RequestTitle))}</span></div>`:'')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${escHtml(spText(f.Description)||'-')}</span></div>`+
       sec('첨부파일')+filesHtml+
