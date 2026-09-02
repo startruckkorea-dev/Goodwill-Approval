@@ -1984,13 +1984,16 @@ async function showDetail(id){
     if(pdfBtn) pdfBtn.style.display = 'flex';
     document.getElementById('modal-content').innerHTML=
       sec('기본 정보')+
-      row('제목',f.Title)+row('신청자',f.RequesterEmail)+row('Company',f.Company)+
+      // 상태는 「이 건이 지금 어떤가」라 먼저 보게 된다. 신청자 바로 아래로 올린다.
+      row('제목',f.Title)+row('신청자',f.RequesterEmail)+
+      row('상태','<span class="badge-'+(f.Status||'대기')+'">'+(f.Status||'대기')+'</span>')+
+      row('신청일',fmtDate(f.RequestDate))+
+      row('Company',f.Company)+
       row('Source',f.Source)+row('Amount type',fmtGWAmount(f.Amount))+
       // AmountValue 가 생기기 전의 기존 건은 값이 없다. 없는 값을 구간 하한으로
       // 채워 넣으면 실제 입력 금액과 구분되지 않으므로 「-」 로 둔다.
       row('Amount (VAT Excluded)', f.AmountValue ? Number(amountDigits(f.AmountValue)).toLocaleString('ko-KR')+' 원' : '-')+
       row('Type',f.GoodwillType)+
-      row('상태','<span class="badge-'+(f.Status||'대기')+'">'+(f.Status||'대기')+'</span>')+row('신청일',fmtDate(f.RequestDate))+
       sec('상세 내용')+(f.RequestTitle?`<div class="det-row"><span class="det-lbl">요청 제목</span><span class="det-val" style="white-space:pre-wrap">${escHtml(spText(f.RequestTitle))}</span></div>`:'')+`<div class="det-row"><span class="det-lbl">Description</span><span class="det-val" style="white-space:pre-wrap">${escHtml(spText(f.Description)||'-')}</span></div>`+
       sec('첨부파일')+filesHtml+
       sec('결재 이력')+'<div style="background:#f9f9f9;border-radius:4px;border:1px solid #edebe9">'+
