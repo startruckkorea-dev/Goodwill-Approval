@@ -163,8 +163,12 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 #tab-list .list-table .badge-type-sales{white-space:nowrap;font-size:.66rem}
 #tab-admin .list-table td,#tab-appr .list-table td,#tab-list .list-table td{white-space:nowrap}
 /* 금액은 자릿수를 맞춰 세로로 읽히게 한다. */
+/* 금액 열 — 자릿수가 세로로 맞아야 크기를 한눈에 비교할 수 있어 값·머리글 모두 우측 정렬(09-10).
+   tabular-nums 로 숫자 폭을 고정해 천 단위 쉼표가 줄마다 같은 자리에 온다. 오른쪽 여백은 상태 열과 붙지 않을 만큼만. */
 #tab-admin .list-table td.c-amt,#tab-appr .list-table td.c-amt,
-#tab-list .list-table td.c-amt{font-variant-numeric:tabular-nums;font-size:.7rem}
+#tab-list .list-table td.c-amt{font-variant-numeric:tabular-nums;font-size:.7rem;text-align:right;padding-right:14px;white-space:nowrap}
+#tab-admin .list-table th.c-amt,#tab-appr .list-table th.c-amt,
+#tab-list .list-table th.c-amt{text-align:right;padding-right:14px}
 /* Badge */
 .badge-type{background:#e1f0ff;color:#0078d4;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
 /* Source 는 CSP 계열(Local CSP / Local CSP Van / Market)과 Sales 두 갈래다.
@@ -438,7 +442,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
       </div>
       <div style="overflow-x:auto">
       <table class="list-table">
-        <thead><tr><th style="width:42px">번호</th><th style="width:136px">Title</th><th>요청 제목</th><th style="width:146px">Source</th><th style="width:190px">Type</th><th style="width:122px">Amount type</th><th style="width:112px">Total Amount<span style="display:block;font-size:.88em;line-height:12px;color:#605e5c;font-weight:400">(VAT Excluded)</span></th><th style="width:72px">상태</th><th style="width:106px">신청일</th><th style="width:90px;text-align:center">Withdraw</th></tr></thead>
+        <thead><tr><th style="width:42px">번호</th><th style="width:136px">Title</th><th>요청 제목</th><th style="width:146px">Source</th><th style="width:190px">Type</th><th style="width:122px">Amount type</th><th class="c-amt" style="width:112px">Total Amount<span style="display:block;font-size:.88em;line-height:12px;color:#605e5c;font-weight:400">(VAT Excluded)</span></th><th style="width:72px">상태</th><th style="width:106px">신청일</th><th style="width:90px;text-align:center">Withdraw</th></tr></thead>
         <tbody id="list-body"><tr><td colspan="10" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
       </table>
       </div>
@@ -450,7 +454,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
   <div id="tab-appr" style="display:none">
     <div class="card" style="padding:0;overflow-x:auto">
       <table class="list-table">
-        <thead><tr><th style="width:56px">번호</th><th style="width:132px">신청자</th><th style="width:120px">Title</th><th>요청 제목</th><th style="width:140px">Source</th><th style="width:150px">Type</th><th style="width:122px">Amount type</th><th style="width:112px">Total Amount<span style="display:block;font-size:.88em;line-height:12px;color:#605e5c;font-weight:400">(VAT Excluded)</span></th><th style="width:72px">상태</th><th style="width:106px">신청일</th><th style="width:92px">처리</th></tr></thead>
+        <thead><tr><th style="width:56px">번호</th><th style="width:132px">신청자</th><th style="width:120px">Title</th><th>요청 제목</th><th style="width:140px">Source</th><th style="width:150px">Type</th><th style="width:122px">Amount type</th><th class="c-amt" style="width:112px">Total Amount<span style="display:block;font-size:.88em;line-height:12px;color:#605e5c;font-weight:400">(VAT Excluded)</span></th><th style="width:72px">상태</th><th style="width:106px">신청일</th><th style="width:92px">처리</th></tr></thead>
         <tbody id="appr-body"><tr><td colspan="11" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
       </table>
     </div>
@@ -487,7 +491,7 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
     </div>
     <div class="card" style="padding:0;overflow-x:auto">
       <table class="list-table">
-        <thead><tr><th style="width:42px">번호</th><th style="width:148px">신청자</th><th style="width:136px">Title</th><th>요청 제목</th><th style="width:146px">Source</th><th style="width:190px">Type</th><th style="width:122px">Amount type</th><th style="width:112px">Total Amount<span style="display:block;font-size:.88em;line-height:12px;color:#605e5c;font-weight:400">(VAT Excluded)</span></th><th style="width:72px">상태</th><th style="width:106px">신청일</th></tr></thead>
+        <thead><tr><th style="width:42px">번호</th><th style="width:148px">신청자</th><th style="width:136px">Title</th><th>요청 제목</th><th style="width:146px">Source</th><th style="width:190px">Type</th><th style="width:122px">Amount type</th><th class="c-amt" style="width:112px">Total Amount<span style="display:block;font-size:.88em;line-height:12px;color:#605e5c;font-weight:400">(VAT Excluded)</span></th><th style="width:72px">상태</th><th style="width:106px">신청일</th></tr></thead>
         <tbody id="admin-body"><tr><td colspan="10" style="text-align:center;padding:32px;color:#605e5c"><div class="dyn-dots" style="justify-content:center"><span></span><span></span><span></span></div></td></tr></tbody>
       </table>
     </div>
@@ -1497,8 +1501,8 @@ function gwFileList(v) {
 
 function gwAmountValueCell(f) {
   const d = amountDigits(f && f.AmountValue);
-  // 머리글이 좌측이므로 값도 좌측으로 둔다. 우측이면 열마다 시작점이 달라
-   // 눈이 세로로 훑을 기준선이 여러 개가 된다.
+  // 금액은 자릿수를 세로로 맞춰 봐야 크기 비교가 되므로 우측 정렬(09-10).
+  // 머리글도 같이 우측으로 맞춘다(.c-amt). 값이 없으면 흐린 「-」.
   return '<td class="c-amt">'
        + (d ? Number(d).toLocaleString('ko-KR') : '<span style="color:#c8c6c4">-</span>')
        + '</td>';
