@@ -1683,12 +1683,13 @@ async function exportGWAdminExcel(){
 
     // 데이터 행
     const rows = [headers];
+    let _xlNo = 0;   // 번호는 목록 ID 가 아니라 내보낸 순서(09-10)
     items.forEach(item=>{
       const f = item.fields;
       const aprs = (apprMap[String(item.id)]||[]).sort((a,b)=>(a.ApprovalOrder||0)-(b.ApprovalOrder||0));
       const _files = gwFileList(f.AttachedFiles);
       const row = [
-        item.id,
+        ++_xlNo,
         f.RequesterEmail||'',
         f.Title||'',
         // 다중 텍스트는 ExternalClass 래퍼가 붙어 온다. 걷어내지 않으면
