@@ -169,6 +169,9 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 #tab-list .list-table td.c-amt{font-variant-numeric:tabular-nums;font-size:.7rem;text-align:right;padding-right:14px;white-space:nowrap}
 #tab-admin .list-table th.c-amt,#tab-appr .list-table th.c-amt,
 #tab-list .list-table th.c-amt{text-align:right;padding-right:14px}
+/* Amount type(금액 구간 「0~1,999,999」)은 값이 아니라 분류라 좌측 그대로. 숫자 폭만 고정. */
+#tab-admin .list-table td.c-amt-type,#tab-appr .list-table td.c-amt-type,
+#tab-list .list-table td.c-amt-type{font-variant-numeric:tabular-nums;font-size:.7rem;text-align:left;white-space:nowrap}
 /* Badge */
 .badge-type{background:#e1f0ff;color:#0078d4;border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:600}
 /* Source 는 CSP 계열(Local CSP / Local CSP Van / Market)과 Sales 두 갈래다.
@@ -1458,7 +1461,7 @@ function renderMyList(){
     ? '필터 '+items.length+'건 / 전체 '+myListRaw.length+'건'
     : '총 '+myListRaw.length+'건';
 
-  pgSet('list',items,(item,idx)=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem;text-align:center">${idx+1}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt">${fmtGWAmount(f.Amount)}</td>${gwAmountValueCell(f)}<td style="text-align:center"><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td style="font-size:.82rem;color:#605e5c">${fmtDate(f.RequestDate)}</td><td style="text-align:center;vertical-align:middle;padding:4px 6px">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, (status||source||amount||kw)?'조회 결과가 없습니다.':'신청 내역이 없습니다.', 10);
+  pgSet('list',items,(item,idx)=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem;text-align:center">${idx+1}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt-type">${fmtGWAmount(f.Amount)}</td>${gwAmountValueCell(f)}<td style="text-align:center"><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td style="font-size:.82rem;color:#605e5c">${fmtDate(f.RequestDate)}</td><td style="text-align:center;vertical-align:middle;padding:4px 6px">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, (status||source||amount||kw)?'조회 결과가 없습니다.':'신청 내역이 없습니다.', 10);
 }
 
 // 신청의 「요청 제목」 한 줄. 상세 화면의 RequestTitle 과 같은 값이다.
@@ -1538,7 +1541,7 @@ async function loadApprovalQueue(){
     const mine=Object.values(_dedupMap).sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
     const rows=mine.map((item,idx)=>{
       const f=item.fields,rf=reqMap[String(f.RequestID)]||{};
-      return`<tr onclick="showDetail(${f.RequestID})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(rf.RequesterEmail||'')}">${escHtml(rf.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(rf.Title||'')}">${escHtml(rf.Title||'-')}</td>${reqTitleCell(rf)}<td><span class="${gwSourceCls(rf.Source)}">${escHtml(rf.Source||'')}</span></td><td class="c-type" title="${escHtml(rf.GoodwillType||'')}">${escHtml(rf.GoodwillType||'')}</td><td class="c-amt">${fmtGWAmount(rf.Amount)}</td>${gwAmountValueCell(rf)}<td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
+      return`<tr onclick="showDetail(${f.RequestID})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(rf.RequesterEmail||'')}">${escHtml(rf.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(rf.Title||'')}">${escHtml(rf.Title||'-')}</td>${reqTitleCell(rf)}<td><span class="${gwSourceCls(rf.Source)}">${escHtml(rf.Source||'')}</span></td><td class="c-type" title="${escHtml(rf.GoodwillType||'')}">${escHtml(rf.GoodwillType||'')}</td><td class="c-amt-type">${fmtGWAmount(rf.Amount)}</td>${gwAmountValueCell(rf)}<td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
     });
     dynLoadEnd(); pgSet('appr',rows,r=>r,'결재 대기 항목이 없습니다.',11);
     const badge=document.getElementById('appr-badge');badge.textContent=mine.length;badge.style.display=mine.length?'inline':'none';
@@ -1777,7 +1780,7 @@ function renderAdminList(){
            (f.GoodwillType||'').toLowerCase().includes(kw);
   });
   document.getElementById('admin-count').textContent='총 '+items.length+'건';
-  pgSet('admin',items,(item,idx)=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(f.RequesterEmail||'')}">${escHtml(f.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt">${fmtGWAmount(f.Amount)}</td>${gwAmountValueCell(f)}<td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',10);
+  pgSet('admin',items,(item,idx)=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(f.RequesterEmail||'')}">${escHtml(f.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-amt-type">${fmtGWAmount(f.Amount)}</td>${gwAmountValueCell(f)}<td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',10);
 }
 
 // ── Detail Modal ──
