@@ -589,6 +589,7 @@ const GRAPH      = 'https://graph.microsoft.com/v1.0';
 const SCOPES     = ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'];
 const LIST_REQ   = 'GW_Requests';
 const LIST_APR   = 'GW_Approvals';
+const LIST_AAC   = 'AAC_Requests';   // 결재 대리 지정 (AAC) — 상신 시 결재자 치환에 쓴다
 const ADMIN_EMAILS = ['',''];
 let _configLoaded = false;
 
@@ -1049,6 +1050,52 @@ function fmtGWAmount(val){
   return val.replace(/(\d+)/g, n=>Number(n).toLocaleString('ko-KR'));
 }
 
+/* ── 결재 대리 지정(AAC) 반영 ────────────────────────────────────────
+   상신 시점에 결재자가 대리 지정 기간 중이면 결재행을 대리인 앞으로 만든다(09-14 결정).
+   · 처리 기록은 대리인 본인의 결재로 남는다. 원래 결재자는 역할 문구와 Original* 열에 남겨
+     "누구를 대신한 결재였는지" 를 잃지 않는다.
+   · 한 번만 치환한다. 대리인이 또 대리 지정을 받아 두었더라도 따라가지 않는다
+     (AAC 에서 대리인은 재위임 신청 자체가 막혀 있지만, 과거 데이터가 있을 수 있어 코드에서도 막는다).
+   · 이미 만들어진 결재행은 바꾸지 않는다. 대리 지정 전에 올라간 건은 원래 결재자가 처리한다.
+   · 치환 결과 같은 사람이 두 단계에 들어가면 치환하지 않는다(한 사람이 같은 건을 두 번 결재하는 것을 막는다).
+   · AAC 조회가 실패하면 치환 없이 원래대로 진행한다 — 대리 지정은 편의 기능이고, 조회 실패로 상신을
+     막으면 업무가 멈춘다. 콘솔에 남긴다.                                                        */
+const AAC_SYS_KEY = 'GW';
+async function aacActiveDelegations() {
+  const now = new Date(new Date().getTime() + 9 * 3600 * 1000).toISOString().slice(0, 19);
+  const res = await apiAll('/sites/' + siteId + '/lists/' + LIST_AAC + "/items?$expand=fields&$top=500&$filter=fields/Status eq '승인완료'");
+  return (res.value || []).map(x => x.fields).filter(f => {
+    const s = String(f.StartDate || '').slice(0, 19), e = String(f.EndDate || '').slice(0, 19);
+    if (!s || !e || s > now || e < now) return false;
+    const sc = String(f.Scope || '').trim();
+    return !sc || sc === 'ALL' || sc.split(',').map(x => x.trim()).includes(AAC_SYS_KEY);
+  });
+}
+// approvers: [{name,email,order,role}] — 치환된 배열을 돌려준다(원본은 건드리지 않는다).
+async function aacApplyDelegation(approvers) {
+  let act = [];
+  try { act = await aacActiveDelegations(); }
+  catch (e) { console.warn('[AAC] 대리 지정 조회 실패 — 원래 결재자로 진행:', e && e.message); return approvers; }
+  if (!act.length) return approvers;
+  const byDelegator = new Map();
+  act.forEach(f => { const k = String(f.RequesterEmail || '').trim().toLowerCase(); if (k && !byDelegator.has(k)) byDelegator.set(k, f); });
+  const deputies = new Set(act.map(f => String(f.DeputyEmail || '').trim().toLowerCase()));
+  const inLine = new Set(approvers.map(a => String(a.email || '').trim().toLowerCase()));
+  return approvers.map(a => {
+    const em = String(a.email || '').trim().toLowerCase();
+    const d = byDelegator.get(em);
+    if (!d) return a;
+    const dep = String(d.DeputyEmail || '').trim().toLowerCase();
+    if (!dep || dep === em) return a;
+    if (deputies.has(em)) { console.warn('[AAC] 연쇄 대리는 따르지 않습니다:', em); return a; }   // 대리인이 또 위임한 경우
+    if (inLine.has(dep)) { console.warn('[AAC] 대리인이 이미 결재선에 있어 치환하지 않습니다:', dep); return a; }
+    inLine.add(dep);
+    return { ...a, name: d.DeputyName || a.name, email: d.DeputyEmail,
+             role: a.role + ' · 대리(' + (a.name || a.email) + ')',
+             _aacOrigName: a.name, _aacOrigEmail: a.email, _aacReqId: d.Title || '' };
+  });
+}
+
 function getApprovalLine(source, amount){
   const matrix = APPROVAL_MATRIX[source];
   if(!matrix||!amount)return[];
@@ -1310,43 +1357,55 @@ async function submitForm(){
         approvers.push({name,email,order,role:(order)+'차결재자('+ROLE_LABELS[role]+')'});
       }
     });
+    // 결재 대리 지정이 걸린 결재자는 대리인 앞으로 바꾼다(치환 실패 시 원래대로 진행)
+    const approversFinal = await aacApplyDelegation(approvers);
+    const _aacSubs = approversFinal.filter(a => a._aacOrigEmail);
+    if (_aacSubs.length) console.log('[AAC] 대리 치환:', _aacSubs.map(a => a._aacOrigEmail + ' → ' + a.email).join(', '));
+
     // 결재선 생성 — 여기서 중간에 끊기면 신청서만 남고 결재가 진행되지 않는 교착 상태가 된다.
     // 부분 생성은 더 위험하다: 만들어진 단계까지만 결재된 뒤 '승인완료'로 마감되어 남은 결재자를 건너뛴다.
     // 그래서 실패하면 신청을 철회 처리해 결재 흐름에서 빼고 재신청을 안내한다.
     const _gwVid = 'GW-'+new Date(new Date().getTime()+9*3600*1000).toISOString().slice(0,10)+'_ID-'+reqId;
     let _made = 0;
     try {
-      for(const a of approvers){
-        await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items','POST',{fields:{
+      for(const a of approversFinal){
+        const _row = await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items','POST',{fields:{
           Title:_gwVid+'-'+a.order, RequestID:reqId,
           ApproverEmail:a.email, ApproverName:a.name,
           ApproverRole:a.role, ApprovalOrder:a.order,
           Status:a.order===1?'대기':'대기(잠김)'
         }});
         _made++;
+        // 원래 결재자 기록 — 열이 없는 목록에서도 상신이 막히지 않게 별도 PATCH 로, 실패해도 넘어간다.
+        if (a._aacOrigEmail && _row && _row.id) {
+          try {
+            await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+_row.id, 'PATCH', { fields: {
+              OriginalApproverEmail: a._aacOrigEmail, OriginalApproverName: a._aacOrigName || '', DelegationRef: a._aacReqId || '' } });
+          } catch (pe) { console.warn('[AAC] 원 결재자 기록 실패(행은 정상):', pe && pe.message); }
+        }
       }
     } catch(ae) {
       console.error('[신청] 결재선 생성 실패:', ae && ae.message);
-      await gwRollbackIncomplete(reqId, _gwVid, _made, approvers.length);
+      await gwRollbackIncomplete(reqId, _gwVid, _made, approversFinal.length);
       return;
     }
     // 만들어진 행 수를 서버에서 다시 세어 확인한다(POST가 200을 받고도 반영되지 않는 경우까지 잡음)
     try {
       const _chk = await apiAll('/sites/'+siteId+'/lists/'+LIST_APR+'/items?$expand=fields&$top=50&$filter=fields/RequestID eq '+parseInt(reqId));
       const _cnt = (_chk.value||[]).length;
-      if(_cnt < approvers.length){
-        console.error('[신청] 결재선 개수 불일치:', _cnt, '/', approvers.length);
-        await gwRollbackIncomplete(reqId, _gwVid, _cnt, approvers.length);
+      if(_cnt < approversFinal.length){
+        console.error('[신청] 결재선 개수 불일치:', _cnt, '/', approversFinal.length);
+        await gwRollbackIncomplete(reqId, _gwVid, _cnt, approversFinal.length);
         return;
       }
       // 초과(중복)도 확인한다. 같은 차수가 두 줄이면 한 줄을 승인해도 나머지가 대기로 남아
       // 신청이 영원히 완료되지 않는다. 되돌리면 정상 행까지 지워지므로 알리기만 한다.
-      if(_cnt > approvers.length){
+      if(_cnt > approversFinal.length){
         const _orders = (_chk.value||[]).map(x=>x.fields && x.fields.ApprovalOrder);
         const _dup = [...new Set(_orders.filter((v,i)=>_orders.indexOf(v)!==i))];
-        console.error('[신청] 결재선 중복 생성:', _cnt, '/', approvers.length, '중복 차수:', _dup);
+        console.error('[신청] 결재선 중복 생성:', _cnt, '/', approversFinal.length, '중복 차수:', _dup);
         showAlert('결재선이 중복 생성되었습니다',
-          _gwVid + ' 의 결재선이 ' + approvers.length + '건이어야 하는데 ' + _cnt + '건 생성되었습니다.\n'
+          _gwVid + ' 의 결재선이 ' + approversFinal.length + '건이어야 하는데 ' + _cnt + '건 생성되었습니다.\n'
           + (_dup.length ? '중복된 결재 차수: ' + _dup.join(', ') + '차\n' : '')
           + '신청은 정상 접수되었으나 중복된 결재행을 정리해야 결재가 완료됩니다. IT팀에 알려주세요.', '⚠️');
       }
