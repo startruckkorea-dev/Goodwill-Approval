@@ -589,7 +589,6 @@ const GRAPH      = 'https://graph.microsoft.com/v1.0';
 const SCOPES     = ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'];
 const LIST_REQ   = 'GW_Requests';
 const LIST_APR   = 'GW_Approvals';
-const LIST_AAC   = 'AAC_Requests';   // 결재 대리 지정 (AAC) — 상신 시 결재자 치환에 쓴다
 const ADMIN_EMAILS = ['',''];
 let _configLoaded = false;
 
@@ -896,6 +895,7 @@ async function boot(account){
     // 설정 파일과 직원 명부는 서로를 필요로 하지 않는다. 둘 다 siteId 만 있으면 된다.
     // 하나씩 기다리면 두 파일을 내려받는 시간이 그대로 더해진다.
     // 함께 시작하면 둘 중 느린 쪽만큼만 걸린다.
+    await loadMyDelegations();   // 내가 대리인으로 받은 위임 — 결재함 판정에 쓴다
     const [_cfg] = await Promise.all([
       loadSystemConfig(),
       loadEmployees(),
@@ -1050,50 +1050,51 @@ function fmtGWAmount(val){
   return val.replace(/(\d+)/g, n=>Number(n).toLocaleString('ko-KR'));
 }
 
-/* ── 결재 대리 지정(AAC) 반영 ────────────────────────────────────────
-   상신 시점에 결재자가 대리 지정 기간 중이면 결재행을 대리인 앞으로 만든다(09-14 결정).
-   · 처리 기록은 대리인 본인의 결재로 남는다. 원래 결재자는 역할 문구와 Original* 열에 남겨
-     "누구를 대신한 결재였는지" 를 잃지 않는다.
-   · 한 번만 치환한다. 대리인이 또 대리 지정을 받아 두었더라도 따라가지 않는다
-     (AAC 에서 대리인은 재위임 신청 자체가 막혀 있지만, 과거 데이터가 있을 수 있어 코드에서도 막는다).
-   · 이미 만들어진 결재행은 바꾸지 않는다. 대리 지정 전에 올라간 건은 원래 결재자가 처리한다.
-   · 치환 결과 같은 사람이 두 단계에 들어가면 치환하지 않는다(한 사람이 같은 건을 두 번 결재하는 것을 막는다).
-   · AAC 조회가 실패하면 치환 없이 원래대로 진행한다 — 대리 지정은 편의 기능이고, 조회 실패로 상신을
-     막으면 업무가 멈춘다. 콘솔에 남긴다.                                                        */
+
+/* ── 결재 대리(AAC) — 내가 대리인으로 받은 위임 ─────────────────────────
+   결재행은 언제나 원래 결재자로 만든다. 대리 기간에는 대리인이 그 사람의 결재를 대신 보고 처리할 수 있고,
+   기간이 끝나면 아무 조치 없이 원래 결재자에게 돌아간다(되돌리기 배치가 필요 없다 — 09-14 A안).
+   처리하는 순간 그 행의 결재자를 대리인으로 바꿔 「대리인 본인의 결재」 로 기록한다.
+   조회 실패 시 대리 건 없이 평소대로 동작한다.                                                   */
+const LIST_AAC = 'AAC_Requests';
 const AAC_SYS_KEY = 'GW';
-async function aacActiveDelegations() {
-  const now = new Date(new Date().getTime() + 9 * 3600 * 1000).toISOString().slice(0, 19);
-  const res = await apiAll('/sites/' + siteId + '/lists/' + LIST_AAC + "/items?$expand=fields&$top=500&$filter=fields/Status eq '승인완료'");
-  return (res.value || []).map(x => x.fields).filter(f => {
-    const s = String(f.StartDate || '').slice(0, 19), e = String(f.EndDate || '').slice(0, 19);
-    if (!s || !e || s > now || e < now) return false;
-    const sc = String(f.Scope || '').trim();
-    return !sc || sc === 'ALL' || sc.split(',').map(x => x.trim()).includes(AAC_SYS_KEY);
-  });
+let _aacDelegated = new Map();   // 위임자 이메일(소문자) → { name, title }
+async function loadMyDelegations(){
+  _aacDelegated = new Map();
+  try{
+    const me=[(user&&user.email||'').toLowerCase(),(user&&user.username||'').toLowerCase()].filter(Boolean);
+    if(!me.length) return;
+    const now=new Date(Date.now()+9*3600*1000).toISOString().slice(0,19);
+    const res=await apiAll('/sites/'+siteId+'/lists/'+LIST_AAC+"/items?$expand=fields&$top=500&$filter=fields/Status eq '승인완료'");
+    (res.value||[]).map(x=>x.fields).forEach(f=>{
+      if(!me.includes(String(f.DeputyEmail||'').trim().toLowerCase())) return;
+      const s=String(f.StartDate||'').slice(0,19), e=String(f.EndDate||'').slice(0,19);
+      if(!s||!e||s>now||e<now) return;
+      const sc=String(f.Scope||'').trim();
+      if(sc && sc!=='ALL' && !sc.split(',').map(x=>x.trim()).includes(AAC_SYS_KEY)) return;
+      const dg=String(f.RequesterEmail||'').trim().toLowerCase();
+      if(dg) _aacDelegated.set(dg,{name:f.RequesterName||dg,title:f.Title||''});
+    });
+    if(_aacDelegated.size) console.log('[AAC] 대리 결재 가능:',[..._aacDelegated.keys()].join(', '));
+  }catch(e){ console.warn('[AAC] 위임 조회 실패 — 내 결재만 표시:',e&&e.message); }
 }
-// approvers: [{name,email,order,role}] — 치환된 배열을 돌려준다(원본은 건드리지 않는다).
-async function aacApplyDelegation(approvers) {
-  let act = [];
-  try { act = await aacActiveDelegations(); }
-  catch (e) { console.warn('[AAC] 대리 지정 조회 실패 — 원래 결재자로 진행:', e && e.message); return approvers; }
-  if (!act.length) return approvers;
-  const byDelegator = new Map();
-  act.forEach(f => { const k = String(f.RequesterEmail || '').trim().toLowerCase(); if (k && !byDelegator.has(k)) byDelegator.set(k, f); });
-  const deputies = new Set(act.map(f => String(f.DeputyEmail || '').trim().toLowerCase()));
-  const inLine = new Set(approvers.map(a => String(a.email || '').trim().toLowerCase()));
-  return approvers.map(a => {
-    const em = String(a.email || '').trim().toLowerCase();
-    const d = byDelegator.get(em);
-    if (!d) return a;
-    const dep = String(d.DeputyEmail || '').trim().toLowerCase();
-    if (!dep || dep === em) return a;
-    if (deputies.has(em)) { console.warn('[AAC] 연쇄 대리는 따르지 않습니다:', em); return a; }   // 대리인이 또 위임한 경우
-    if (inLine.has(dep)) { console.warn('[AAC] 대리인이 이미 결재선에 있어 치환하지 않습니다:', dep); return a; }
-    inLine.add(dep);
-    return { ...a, name: d.DeputyName || a.name, email: d.DeputyEmail,
-             role: a.role + ' · 대리(' + (a.name || a.email) + ')',
-             _aacOrigName: a.name, _aacOrigEmail: a.email, _aacReqId: d.Title || '' };
-  });
+// 내 것이거나, 내가 대리인으로 받은 사람의 것
+function isMyAppr(email){
+  const e=String(email||'').toLowerCase();
+  if(!e) return false;
+  if(e===(user&&user.email||'').toLowerCase()||e===(user&&user.username||'').toLowerCase()) return true;
+  return _aacDelegated.has(e);
+}
+function aacDelegatorOf(email){ return _aacDelegated.get(String(email||'').toLowerCase())||null; }
+// 결재 처리 PATCH 에 대리 기록을 얹는다(대리 건이 아니면 그대로).
+function aacPatchWith(patch, curFields){
+  const orig=String(curFields&&curFields.ApproverEmail||''); const d=aacDelegatorOf(orig);
+  if(!d) return patch;
+  const r=String(curFields.ApproverRole||'');
+  const out={...patch, ApproverEmail:(user.email||user.username||''), ApproverName:(user.name||user.email||'')};
+  if(!/·\s*대리\(/.test(r)) out.ApproverRole=r+' · 대리('+(curFields.ApproverName||d.name||orig)+')';
+  console.log('[AAC] 대리 결재 처리:',orig,'→',out.ApproverEmail);
+  return out;
 }
 
 function getApprovalLine(source, amount){
@@ -1357,11 +1358,8 @@ async function submitForm(){
         approvers.push({name,email,order,role:(order)+'차결재자('+ROLE_LABELS[role]+')'});
       }
     });
-    // 결재 대리 지정이 걸린 결재자는 대리인 앞으로 바꾼다(치환 실패 시 원래대로 진행)
-    const approversFinal = await aacApplyDelegation(approvers);
-    const _aacSubs = approversFinal.filter(a => a._aacOrigEmail);
-    if (_aacSubs.length) console.log('[AAC] 대리 치환:', _aacSubs.map(a => a._aacOrigEmail + ' → ' + a.email).join(', '));
-
+    // 결재행은 언제나 원래 결재자로 만든다(09-14 A안). 대리는 결재함 판정에서 처리하고, 기간이 끝나면 자동 복귀한다.
+    const approversFinal = approvers;
     // 결재선 생성 — 여기서 중간에 끊기면 신청서만 남고 결재가 진행되지 않는 교착 상태가 된다.
     // 부분 생성은 더 위험하다: 만들어진 단계까지만 결재된 뒤 '승인완료'로 마감되어 남은 결재자를 건너뛴다.
     // 그래서 실패하면 신청을 철회 처리해 결재 흐름에서 빼고 재신청을 안내한다.
@@ -1369,20 +1367,13 @@ async function submitForm(){
     let _made = 0;
     try {
       for(const a of approversFinal){
-        const _row = await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items','POST',{fields:{
+        await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items','POST',{fields:{
           Title:_gwVid+'-'+a.order, RequestID:reqId,
           ApproverEmail:a.email, ApproverName:a.name,
           ApproverRole:a.role, ApprovalOrder:a.order,
           Status:a.order===1?'대기':'대기(잠김)'
         }});
         _made++;
-        // 원래 결재자 기록 — 열이 없는 목록에서도 상신이 막히지 않게 별도 PATCH 로, 실패해도 넘어간다.
-        if (a._aacOrigEmail && _row && _row.id) {
-          try {
-            await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+_row.id, 'PATCH', { fields: {
-              OriginalApproverEmail: a._aacOrigEmail, OriginalApproverName: a._aacOrigName || '', DelegationRef: a._aacReqId || '' } });
-          } catch (pe) { console.warn('[AAC] 원 결재자 기록 실패(행은 정상):', pe && pe.message); }
-        }
       }
     } catch(ae) {
       console.error('[신청] 결재선 생성 실패:', ae && ae.message);
@@ -1599,7 +1590,7 @@ async function loadApprovalQueue(){
       apiAll('/sites/'+siteId+'/lists/'+LIST_REQ+'/items?$expand=fields&$top=500'),
     ]);
     const reqMap={};reqData.value.forEach(r=>{reqMap[r.id]=r.fields;});
-    const _myPending=apprData.value.filter(i=>(e=>(e===(user.email||'').toLowerCase()||e===(user.username||'').toLowerCase()))((i.fields.ApproverEmail||'').toLowerCase()));
+    const _myPending=apprData.value.filter(i=>isMyAppr(i.fields.ApproverEmail));
     const _dedupMap={};
     _myPending.forEach(i=>{ const rid=String(i.fields.RequestID); if(!_dedupMap[rid]||i.fields.ApprovalOrder<_dedupMap[rid].fields.ApprovalOrder) _dedupMap[rid]=i; });
     const mine=Object.values(_dedupMap).sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
@@ -1660,7 +1651,7 @@ async function processApproval(apprId,action,reqId,comment=''){
   try{
     const _cur=await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+apprId+'?$expand=fields');
     if(_cur.fields.Status!=='대기'){showAlert('이미 처리된 결재 항목입니다.','다른 창에서 처리되었거나 이미 완료된 항목입니다.','⚠️');loadApprovalQueue();return;}
-    await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+apprId,'PATCH',{fields:{Status:action==='승인'?'승인':action,Comment:comment,ApprovalDate:new Date().toISOString()}});
+    await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+apprId,'PATCH',{fields:aacPatchWith({Status:action==='승인'?'승인':action,Comment:comment,ApprovalDate:new Date().toISOString()},_cur.fields)});
     if(action==='반려'){
       await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'반려'}});
     } else {
@@ -2114,7 +2105,7 @@ async function showDetail(id){
     }).join('');
 
     // 내 결재 대기 건
-    const myPending=apprList.find(a=>(a.fields.ApproverEmail||'').toLowerCase()===(user.email||'').toLowerCase()&&a.fields.Status==='대기');
+    const myPending=apprList.find(a=>isMyAppr(a.fields.ApproverEmail)&&a.fields.Status==='대기');
 
     window._currentDetailId = id;
     window._currentDetailFields = f;
@@ -2198,7 +2189,7 @@ async function checkApprovalBadge(){
     // 색인을 건 뒤에 서버 필터로 바꾸는 편이 안전하다.
     const data=await apiAll('/sites/'+siteId+'/lists/'+LIST_APR
       + "/items?expand=fields(select=ApproverEmail,Status)&$top=500&$filter=fields/Status eq '대기'");
-    const mine=data.value.filter(i=>(e=>(e===(user.email||'').toLowerCase()||e===(user.username||'').toLowerCase()))((i.fields.ApproverEmail||'').toLowerCase()));
+    const mine=data.value.filter(i=>isMyAppr(i.fields.ApproverEmail));
     const badge=document.getElementById('appr-badge');
     if(!badge) return;
     if(mine.length){badge.textContent=mine.length;badge.style.display='inline';}
