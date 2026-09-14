@@ -620,10 +620,12 @@ const APPROVAL_MATRIX = {
     '2000000~4999999':['CS_TM','SP_VP','CTRL'],
     '5000000~':       ['CS_TM','SP_VP','RD_','CTRL','CFO_'],
   },
+  // SA1 = Sales 1st approval (GW_Sales_1st), SA2 = Sales 2nd approval (GW_Sales_2nd), SD = Sales Head (GW_Sales_Head)
+  // 결재 순서는 1차 → 2차 → Head. (키 이름은 기존 데이터와의 호환을 위해 그대로 둔다)
   'Local Sales Goodwill': {
-    '0~1999999':      ['SA2','SA1','SD','CTRL'],
-    '2000000~4999999':['SA2','SA1','SD','CTRL'],
-    '5000000~':       ['SA2','SA1','SD','RD_','CTRL','CFO_'],
+    '0~1999999':      ['SA1','SA2','SD','CTRL'],
+    '2000000~4999999':['SA1','SA2','SD','CTRL'],
+    '5000000~':       ['SA1','SA2','SD','RD_','CTRL','CFO_'],
   },
   'Market Goodwill': {
     '0~1999999':      ['CS_TM','SP_VP','CTRL'],
@@ -634,12 +636,24 @@ const APPROVAL_MATRIX = {
 
 const ROLE_LABELS = {
   CS_TM:'CSP Goodwill Admin (자동 지정)', CTM:'CS Team Manager', TSM:'Technical Service Manager',
-  SP_VP:'CSP Head (자동 지정)', SA1:'Sales Assistant1', SA2:'Sales Assistant2',
-  SD:'Sales Director', CTRL:'Controlling (고정)', CFO_:'CFO (고정)', CEO_:'CEO (고정)', RD_:'RD (고정)',
+  SP_VP:'CSP Head (자동 지정)',
+  SA1:'Sales 1st approval (자동 지정)', SA2:'Sales 2nd approval (자동 지정)', SD:'Sales Head (자동 지정)',
+  CTRL:'Controlling (고정)', CFO_:'CFO (고정)', CEO_:'CEO (고정)', RD_:'RD (고정)',
 };
-const FIXED_ROLES = ['CTRL','CFO_','CEO_','RD_','CS_TM','SP_VP'];
+// 자동 지정(설정 파일) 역할 — 화면에서 고르지 않고 읽기 전용으로 보여준다.
+const FIXED_ROLES = ['CTRL','CFO_','CEO_','RD_','CS_TM','SP_VP','SA1','SA2','SD'];
+// 역할 → 설정에서 읽은 사람. 미리보기·블록·제출이 모두 이 표를 본다(한 곳만 고치면 전부 따라온다).
+const FIXED_PERSON = { CS_TM:['CSP Goodwill Admin',()=>CSP_ADMIN], SP_VP:['CSP Head',()=>SP_VP_FIXED],
+  SA1:['Sales 1st approval',()=>SALES_1ST], SA2:['Sales 2nd approval',()=>SALES_2ND], SD:['Sales Head',()=>SALES_HEAD],
+  CTRL:['Controlling',()=>CONTROLLING], CFO_:['CFO',()=>CFO], CEO_:['CEO',()=>CEO], RD_:['RD',()=>RD] };
 const CSP_ADMIN   = { name:'', email:'', role:'CSP Goodwill Admin' }; // GW_CSP_1st from system_config
 const SP_VP_FIXED = { name:'', email:'', role:'CSP Head' };               // GW_CSP_Head from system_config
+// Local Sales Goodwill 의 1·2차·Head — 09-14 부터 설정 파일에서 자동 지정한다.
+// 그전에는 신청자가 직원 검색으로 매번 골랐다(SA2·SA1·SD). 담당이 고정이라 고를 이유가 없고,
+// 잘못 고르면 결재선이 어긋나기 때문에 CSP 쪽과 같은 방식으로 바꿨다.
+const SALES_1ST   = { name:'', email:'', role:'Sales 1st approval' };     // GW_Sales_1st
+const SALES_2ND   = { name:'', email:'', role:'Sales 2nd approval' };     // GW_Sales_2nd
+const SALES_HEAD  = { name:'', email:'', role:'Sales Head' };             // GW_Sales_Head
 let msal_g=null, user=null, siteId=null, employeeData=[], allReqCache=[];
 
 // ── MSAL ──
@@ -905,6 +919,9 @@ async function boot(account){
       Object.assign(RD,          cfgVal(_cfg,'GW_RD',RD));
       Object.assign(CSP_ADMIN,   cfgVal(_cfg,'GW_CSP_1st', CSP_ADMIN));
       Object.assign(SP_VP_FIXED, cfgVal(_cfg,'GW_CSP_Head',SP_VP_FIXED));
+      Object.assign(SALES_1ST,   cfgVal(_cfg,'GW_Sales_1st',  SALES_1ST));
+      Object.assign(SALES_2ND,   cfgVal(_cfg,'GW_Sales_2nd',  SALES_2ND));
+      Object.assign(SALES_HEAD,  cfgVal(_cfg,'GW_Sales_Head', SALES_HEAD));
     }
     // 결재 대기 배지는 화면이 뜬 뒤에 채워도 된다. 기다리면 그만큼 흰 화면이 길어진다.
     // 실패해도 화면은 그대로 뜨고 배지만 비어 있게 둔다.
@@ -1106,24 +1123,13 @@ function renderApproverBlocks(source, amount){
     const div=document.createElement('div');
     div.className='appr-block '+(isFixed?'appr-fixed':'');
 
-    if(role==='CS_TM'){
-      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CSP Goodwill Admin (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="${CSP_ADMIN.name}" readonly><input type="email" value="${CSP_ADMIN.email}" readonly></div>`;
-    } else if(role==='SP_VP'){
-      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CSP Head (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="${SP_VP_FIXED.name}" readonly><input type="email" value="${SP_VP_FIXED.email}" readonly></div>`;
-    } else if(role==='CTRL'){
-      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— Controlling (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="${CONTROLLING.name}" readonly><input type="email" value="${CONTROLLING.email}" readonly></div>`;
-    } else if(role==='CFO_'){
-      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CFO (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="${CFO.name}" readonly><input type="email" value="${CFO.email}" readonly></div>`;
-    } else if(role==='CEO_'){
-      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— CEO (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="${CEO.name}" readonly><input type="email" value="${CEO.email}" readonly></div>`;
-    } else if(role==='RD_'){
-      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— RD (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="${RD.name}" readonly><input type="email" value="${RD.email}" readonly></div>`;
+    const fx = FIXED_PERSON[role];
+    if(fx){
+      const [label, get] = fx; const p = get() || {};
+      const miss = !p.email;
+      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— ${label} (자동 지정)</span></div>
+        <div class="appr-info"><input type="text" value="${escHtml(p.name||'')}" readonly><input type="email" value="${escHtml(p.email||'')}" readonly></div>`
+        + (miss ? `<div style="font-size:.72rem;color:#a4262c;margin-top:6px">설정 파일에 이 역할의 담당자가 없습니다. IT팀(stk_it@hyosung.com)에 알려주세요.</div>` : '');
     } else {
       const label=ROLE_LABELS[role]||role;
       div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="req-mark">*</span> <span class="hint">— ${label}</span></div>
@@ -1218,8 +1224,12 @@ async function submitForm(){
   // 결재자 검증
   const line=getApprovalLine(source,amount);
   for(let i=0;i<line.length;i++){
-    const role=line[i]; const order=i+1;
-    if(!FIXED_ROLES.includes(role)){
+    const role=line[i]; const order=i+1; const fx=FIXED_PERSON[role];
+    if(fx){
+      // 자동 지정 역할은 설정 파일에서 온다. 비어 있으면 결재자 없는 행이 만들어지므로 상신을 막는다.
+      const p=fx[1]()||{};
+      if(!p.email){ alert(order+'차 결재자('+fx[0]+')가 설정 파일에 없습니다.\n\nIT팀(stk_it@hyosung.com)에 알려주세요.'); return; }
+    } else {
       const email=document.getElementById('ga'+order+'-email')?.value;
       if(!email){alert((order)+'차 결재자('+ROLE_LABELS[role]+')를 지정해주세요.');return;}
     }
@@ -1292,13 +1302,8 @@ async function submitForm(){
     // 결재자 등록
     const approvers=[];
     line.forEach((role,i)=>{
-      const order=i+1;
-      if(role==='CS_TM') approvers.push({...CSP_ADMIN,order,role:'결재자(CSP Goodwill Admin)'});
-      else if(role==='SP_VP') approvers.push({...SP_VP_FIXED,order,role:'결재자(CSP Head)'});
-      else if(role==='CTRL') approvers.push({...CONTROLLING,order,role:'결재자(Controlling)'});
-      else if(role==='CFO_') approvers.push({...CFO,order,role:'결재자(CFO)'});
-      else if(role==='CEO_') approvers.push({...CEO,order,role:'결재자(CEO)'});
-      else if(role==='RD_') approvers.push({...RD,order,role:'결재자(RD)'});
+      const order=i+1; const fx=FIXED_PERSON[role];
+      if(fx){ const [label,get]=fx; const p=get()||{}; approvers.push({name:p.name,email:p.email,order,role:'결재자('+label+')'}); }
       else{
         const name=document.getElementById('ga'+order+'-name').value;
         const email=document.getElementById('ga'+order+'-email').value;
