@@ -1100,7 +1100,10 @@ function aacPatchWith(patch, curFields){
   if(!d) return patch;
   const r=String(curFields.ApproverRole||'');
   const out={...patch, ApproverEmail:(user.email||user.username||''), ApproverName:(user.name||user.email||'')};
-  if(!/·\s*대리\(/.test(r)) out.ApproverRole=r+' · 대리('+(curFields.ApproverName||d.name||orig)+')';
+  // 원 결재자를 이름 + 메일로 남긴다. 예전에는 이름만 넣어 화면에서 메일을 보여줄 수
+  // 없었다(치환 뒤 ApproverEmail 은 대리인 것이 되므로 원 결재자 메일이 사라진다).
+  // 표시 쪽은 'Name <mail>' 과 예전 'Name' 양쪽을 모두 읽는다.
+  if(!/·\s*대리\(/.test(r)) out.ApproverRole=r+' · 대리('+(curFields.ApproverName||d.name||orig)+(orig?' <'+orig+'>':'')+')';
   console.log('[AAC] 대리 결재 처리:',orig,'→',out.ApproverEmail);
   return out;
 }
@@ -2109,7 +2112,7 @@ async function showDetail(id){
     const apprHtml=apprList.map(a=>{
       const af=a.fields;
       const st=af.Status==='대기'?'status-대기':af.Status==='승인'?'status-승인':af.Status==='반려'?'status-반려':'status-대기잠김';
-      return`<div class="appr-item"><div>${(()=>{const _r=af.ApproverRole||'',_o=String(af.ApprovalOrder||'');const _dm=_r.match(/\s*·\s*대리\((.+)\)\s*$/);const _b=_dm?_r.slice(0,_dm.index):_r;const _t=_b.startsWith(_o+'차')?_b.slice(_o.length+1).trim():_b;const _d=_dm?' <span style="font-size:11px;font-weight:600;color:#7719aa;background:#f6f0fb;border:1px solid #e5d6f2;border-radius:10px;padding:1px 7px;margin-left:4px;white-space:nowrap">대리 · '+escHtml(_dm[1])+'</span>':'';return '<b>'+_o+'차</b> '+_t+_d;})()}<br><span style="font-size:.72rem;color:#605e5c">${escHtml(af.ApproverName||'')} · ${escHtml(af.ApproverEmail||'')}</span>${af.ApprovalDate?`<br><span style="font-size:.72rem;color:#a19f9d">${fmtDate(af.ApprovalDate)}</span>`:''  }${af.Comment?`<br><span style="font-size:.72rem;background:#fff;border:1px solid #edebe9;border-radius:4px;padding:2px 6px;display:inline-block;margin-top:2px">💬 ${escHtml(spText(af.Comment))}</span>`:''}</div><span class="${st}">${af.Status}</span></div>`;
+      return`<div class="appr-item"><div>${(()=>{const _r=af.ApproverRole||'',_o=String(af.ApprovalOrder||'');const _dm=_r.match(/\s*·\s*대리\((.+)\)\s*$/);const _b=_dm?_r.slice(0,_dm.index):_r;const _t=_b.startsWith(_o+'차')?_b.slice(_o.length+1).trim():_b;const _dp=_dm?(()=>{const _m=String(_dm[1]).match(/^(.*?)\s*<([^>]+)>\s*$/);return {n:(_m?_m[1]:_dm[1]).trim(),e:_m?_m[2].trim():''};})():null;const _d=_dp?' <span style="font-size:10px;font-weight:700;letter-spacing:.3px;color:#7719aa;background:#f6f0fb;border:1px solid #e5d6f2;border-radius:10px;padding:1px 8px;margin-left:6px;white-space:nowrap;vertical-align:1px">Delegated</span>':'';const _db=_dp?'<div style="font-size:11px;color:#8a6fa8;margin-top:2px">on behalf of <b style="font-weight:600">'+escHtml(_dp.n)+'</b>'+(_dp.e?' &middot; '+escHtml(_dp.e):'')+'</div>':'';return '<b>'+_o+'차</b> '+_t+_d+_db;})()}<br><span style="font-size:.72rem;color:#605e5c">${escHtml(af.ApproverName||'')} · ${escHtml(af.ApproverEmail||'')}</span>${af.ApprovalDate?`<br><span style="font-size:.72rem;color:#a19f9d">${fmtDate(af.ApprovalDate)}</span>`:''  }${af.Comment?`<br><span style="font-size:.72rem;background:#fff;border:1px solid #edebe9;border-radius:4px;padding:2px 6px;display:inline-block;margin-top:2px">💬 ${escHtml(spText(af.Comment))}</span>`:''}</div><span class="${st}">${af.Status}</span></div>`;
     }).join('');
 
     // 내 결재 대기 건
