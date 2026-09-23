@@ -90,6 +90,8 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#0078d4}
 .form-group input[readonly]{background:#f3f2f1;color:#a19f9d}
 #f-company[readonly]{color:#605e5c;font-weight:600}
+#f-fin{font-size:.8rem;letter-spacing:.03em}
+#f-fin::placeholder{font-size:.72rem;letter-spacing:0;color:#a19f9d}
 .hint{font-size:.7rem;color:#605e5c;font-weight:400}
 /* Email CC */
 .email-row{display:flex;gap:6px;margin-bottom:6px}
@@ -322,8 +324,10 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
             </div>
             <div style="display:flex;flex-direction:column;gap:4px" id="f-fin-wrap">
               <label>FIN <span style="font-size:.72em;color:#605e5c;font-weight:400">(차대번호)</span> <span class="req-mark">*</span></label>
-              <input type="text" id="f-fin" maxlength="25" autocomplete="off" spellcheck="false" placeholder="ex WDB9640321L123456"
-                     oninput="onFinInput(this)" style="text-transform:uppercase;letter-spacing:.04em">
+              <!-- 대문자 변환은 onFinInput(normFin)이 값 자체에 하므로 text-transform 을 쓰지 않는다 —
+                   쓰면 안내 문구(placeholder)까지 「EX …」 로 바뀌고 반 칸에 다 안 들어갔다(09-23). -->
+              <input type="text" id="f-fin" maxlength="25" autocomplete="off" spellcheck="false" placeholder="ex W1T963425R1234567"
+                     oninput="onFinInput(this)">
             </div>
           </div>
         </div>
