@@ -91,6 +91,8 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 .form-group input[readonly]{background:#f3f2f1;color:#a19f9d}
 #f-company[readonly]{color:#605e5c;font-weight:600}
 #f-fin{font-size:.8rem;letter-spacing:.03em}
+.fin-hint{font-size:.68rem;color:#8a8886;line-height:1.3;margin-top:-1px}
+.fin-hint b{color:#605e5c;font-weight:600}
 #f-fin::placeholder{font-size:.72rem;letter-spacing:0;color:#a19f9d}
 .hint{font-size:.7rem;color:#605e5c;font-weight:400}
 /* Email CC */
@@ -329,8 +331,10 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
               <label>FIN <span style="font-size:.72em;color:#605e5c;font-weight:400">(차대번호)</span> <span class="req-mark">*</span></label>
               <!-- 대문자 변환은 onFinInput(normFin)이 값 자체에 하므로 text-transform 을 쓰지 않는다 —
                    쓰면 안내 문구(placeholder)까지 「EX …」 로 바뀌고 반 칸에 다 안 들어갔다(09-23). -->
-              <input type="text" id="f-fin" maxlength="25" autocomplete="off" spellcheck="false" placeholder="ex W1T963425R1234567"
-                     oninput="onFinInput(this)">
+              <!-- 차량이 여러 대면 쉼표로 이어 전부 적는다(09-24 요청). 글자수 한도는 17자 × 6대 + 구분자 ≈ 120. -->
+              <input type="text" id="f-fin" maxlength="120" autocomplete="off" spellcheck="false" placeholder="ex W1T9634…, WDB9640…"
+                     oninput="onFinInput(this)" onblur="this.value=normFinList(this.value)">
+              <div class="fin-hint">차대번호가 2개 이상이면 쉼표(,)로 구분해 <b>전부</b> 기입해 주세요.</div>
             </div>
           </div>
         </div>
@@ -619,7 +623,19 @@ let _configLoaded = false;
    켜지면 신청서에 FIN 칸이 보이고 필수가 되며, 목록 3곳 · 상세 · Excel 에 FIN 이 나온다. 꺼지면 예전 모양 그대로. */
 let _gwFinReady = false;
 function normFin(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
-function onFinInput(el){ const p=el.selectionStart, n=normFin(el.value); if(el.value!==n){ el.value=n; try{ el.setSelectionRange(p,p); }catch(e){} } }
+/* FIN 여러 개(09-24): 쉼표(또는 ; / 줄바꿈)로 나눠 적으면 「A, B」 로 정리한다. 저장 · 목록 · Excel 도 이 형식.
+   한 조각 안의 공백 · 하이픈은 지운다(「W1T 963425 R0738112」 도 한 FIN). 구분자 없이 붙여 적은 34자 · 51자는 17자씩 나눈다. */
+function finTokens(v){
+  const out=[];
+  String(v||'').toUpperCase().split(/[,;\/\n]+/).forEach(piece=>{
+    const p=piece.replace(/[^A-Z0-9]/g,''); if(!p) return;
+    if(p.length>17 && p.length%17===0){ for(let i=0;i<p.length;i+=17) out.push(p.slice(i,i+17)); } else out.push(p);
+  });
+  return out;
+}
+function normFinList(v){ return finTokens(v).join(', '); }
+// 입력 중에는 대문자 · 영숫자 · 쉼표 · 공백만 남긴다(구분자는 살려 둔다). 정리는 칸을 벗어날 때(normFinList).
+function onFinInput(el){ const p=el.selectionStart, n=String(el.value||'').toUpperCase().replace(/[^A-Z0-9,; \/]/g,''); if(el.value!==n){ el.value=n; try{ el.setSelectionRange(p,p); }catch(e){} } }
 async function checkFinColumn(){
   try{
     const r=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/columns?$select=name');
@@ -1339,7 +1355,7 @@ async function submitForm(){
   const type  =resolveTypeValue();   // Exception이면 'Exception(사유)' 형태로 반환
   const title =document.getElementById('f-title').value.trim();
   const company=document.getElementById('f-company').value;
-  const fin=normFin(document.getElementById('f-fin')?.value);
+  const finList=finTokens(document.getElementById('f-fin')?.value), fin=finList.join(', ');
 
   if(!source){alert('Source를 선택해주세요.');return;}
   // Amount type 은 금액에서 자동으로 정해진다. 금액이 비면 type 도 빈다.
@@ -1353,8 +1369,9 @@ async function submitForm(){
   if(!type)  {alert('Type을 선택해주세요.');return;}
   // FIN(차대번호) — 열이 준비된 환경에서만 필수. 17자리가 아니면 오타일 가능성이 커서 한 번 되묻는다(막지는 않는다).
   if(_gwFinReady){
-    if(!fin){alert('FIN (차대번호)을 입력해주세요.');document.getElementById('f-fin')?.focus();return;}
-    if(fin.length!==17 && !confirm('FIN 이 17자리가 아닙니다 ('+fin.length+'자리): '+fin+'\n그대로 진행할까요?')){document.getElementById('f-fin')?.focus();return;}
+    if(!finList.length){alert('FIN (차대번호)을 입력해주세요. 차량이 여러 대면 쉼표로 구분해 전부 적어 주세요.');document.getElementById('f-fin')?.focus();return;}
+    const _odd=finList.filter(t=>t.length!==17);
+    if(_odd.length && !confirm('17자리가 아닌 FIN 이 있습니다: '+_odd.map(t=>t+'('+t.length+'자리)').join(', ')+'\n그대로 진행할까요?')){document.getElementById('f-fin')?.focus();return;}
   }
   // Exception은 사유가 근거 자료가 되므로 미입력 시 제출을 막는다
   if(document.getElementById('f-type').value==='Exception' && type==='Exception'){
