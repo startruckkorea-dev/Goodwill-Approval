@@ -99,7 +99,7 @@ body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;min-height:100vh}
 .fin-btn:disabled{opacity:.4;cursor:default}
 .fin-hint{font-size:.68rem;color:#8a8886;line-height:1.3;margin-top:-1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fin-hint b{color:#605e5c;font-weight:600}
-#f-fin::placeholder{font-size:.72rem;letter-spacing:0;color:#a19f9d}
+#f-fin::placeholder,.fin-inp::placeholder{font-size:.72rem;letter-spacing:0;color:#a19f9d}   /* 늘린 칸도 같은 안내 글자 크기(09-24) */
 .hint{font-size:.7rem;color:#605e5c;font-weight:400}
 /* Email CC */
 .email-row{display:flex;gap:6px;margin-bottom:6px}
@@ -1399,6 +1399,8 @@ async function submitForm(){
   // FIN(차대번호) — 열이 준비된 환경에서만 필수. 17자리가 아니면 오타일 가능성이 커서 한 번 되묻는다(막지는 않는다).
   if(_gwFinReady){
     if(!finList.length){alert('FIN (차대번호)을 입력해주세요. 차량이 여러 대면 + 를 눌러 한 칸에 하나씩 넣어 주세요.');document.getElementById('f-fin')?.focus();return;}
+    // SharePoint FIN 열은 한 줄 텍스트(255자) — 17자 × 13대 + 구분자 = 255. 그보다 많으면 저장이 400 으로 거절되므로 미리 막는다.
+    if(fin.length>255){alert('차대번호가 너무 많습니다 — 한 신청에 최대 13대(255자)까지 저장할 수 있습니다. 나눠서 신청해 주세요.');return;}
     const _odd=finList.filter(t=>t.length!==17);
     if(_odd.length && !confirm('17자리가 아닌 FIN 이 있습니다: '+_odd.map(t=>t+'('+t.length+'자리)').join(', ')+'\n그대로 진행할까요?')){document.getElementById('f-fin')?.focus();return;}
   }
