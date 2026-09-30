@@ -443,10 +443,10 @@ textarea.comment-box{width:100%;border:1px solid #d2d0ce;border-radius:4px;paddi
         <div>결재 라인이 자동으로 구성됩니다</div>
       </div>
 
-      <!-- 결재 라인 프리뷰 -->
-      <div class="line-preview" id="line-preview" style="display:none">
-        <div class="line-preview-title">📋 결재 라인 (Source & Amount 기준 자동 구성)</div>
-        <div id="line-preview-content"></div>
+      <!-- 결재 라인 프리뷰 — ACC Voucher 와 같은 모양(09-30) -->
+      <div class="appr-line-preview" id="line-preview" style="display:none">
+        <div class="appr-line-title">📋 결재 라인 (Source & Amount 기준 자동 구성)</div>
+        <div id="line-preview-content" class="appr-line-steps"></div>
       </div>
       <div id="appr-blocks"></div>
 
@@ -733,6 +733,9 @@ const ROLE_LABELS = {
   SA1:'Sales 1st approval (자동 지정)', SA2:'Sales 2nd approval (자동 지정)', SD:'Sales Head (자동 지정)',
   CTRL:'Controlling (고정)', CFO_:'CFO (고정)', CEO_:'CEO (고정)', RD_:'RD (고정)',
 };
+// 화면 표시용 역할 이름 — ROLE_LABELS 의 "(자동 지정)"/"(고정)" 꼬리는 저장값(ApproverRole)에 그대로 들어가므로 표에서는 떼지 않고,
+// 미리보기·결재자 블록에서만 뗀다(자동 지정 여부는 초록 배지·알약으로 보인다 — ACC Voucher 와 같은 규칙, 09-30).
+function roleDisp(role){ return (ROLE_LABELS[role]||role).replace(/\s*\((자동 지정|고정)\)\s*$/,''); }
 // 자동 지정(설정 파일) 역할 — 화면에서 고르지 않고 읽기 전용으로 보여준다.
 const FIXED_ROLES = ['CTRL','CFO_','CEO_','RD_','CS_TM','SP_VP','SA1','SA2','SD'];
 // 역할 → 설정에서 읽은 사람. 미리보기·블록·제출이 모두 이 표를 본다(한 곳만 고치면 전부 따라온다).
@@ -1303,7 +1306,7 @@ function renderApproverBlocks(source, amount){
   previewContent.innerHTML=line.map((role,i)=>`
     <span class="line-step">
       <span class="line-step-badge ${FIXED_ROLES.includes(role)?'fixed':''}">${i+1}차</span>
-      <span style="font-size:.75rem">${ROLE_LABELS[role]||role}</span>
+      <span class="line-step-label">${roleDisp(role)}</span>
       ${i<line.length-1?'<span class="line-arrow">→</span>':''}
     </span>`).join('');
 
@@ -1318,13 +1321,13 @@ function renderApproverBlocks(source, amount){
     if(fx){
       const [label, get] = fx; const p = get() || {};
       const miss = !p.email;
-      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="hint">— ${label} (자동 지정)</span></div>
-        <div class="appr-info"><input type="text" value="${escHtml(p.name||'')}" readonly><input type="email" value="${escHtml(p.email||'')}" readonly></div>`
+      div.innerHTML=`<div class="appr-block-title">${order}차 결재자<span class="appr-tag auto">자동 지정</span> <span class="hint">— ${label}</span></div>
+        <div class="appr-info"><input type="text" value="${escHtml(p.name||'')}" readonly placeholder="이름"><input type="email" value="${escHtml(p.email||'')}" readonly placeholder="이메일"></div>`
         + (miss ? `<div style="font-size:.72rem;color:#a4262c;margin-top:6px">설정 파일에 이 역할의 담당자가 없습니다. IT팀(stk_it@hyosung.com)에 알려주세요.</div>` : '');
     } else {
-      const label=ROLE_LABELS[role]||role;
-      div.innerHTML=`<div class="appr-title">${order}차 결재자 <span class="req-mark">*</span> <span class="hint">— ${label}</span></div>
-        <div class="appr-grid">
+      const label=roleDisp(role);
+      div.innerHTML=`<div class="appr-block-title">${order}차 결재자 <span class="req-mark">*</span><span class="appr-tag manual">직접 선택</span> <span class="hint">— ${label}</span></div>
+        <div class="appr-select-row">
           <select id="ga${order}-dept" onchange="gwDeptChange(${order})"><option value="">부서</option>${[...new Set(employeeData.map(e=>e.dept))].sort().map(d=>`<option value="${d}">${d}</option>`).join('')}</select>
           <select id="ga${order}-team" onchange="gwTeamChange(${order})" disabled><option value="">팀</option></select>
           <select id="ga${order}-person" onchange="gwPersonChange(${order})" disabled><option value="">직원 선택</option></select>
@@ -2535,6 +2538,38 @@ function _wdBtn(itemId, aprList, reqList, status) {
 }
 
 
+
+/* ── 결재 라인 · 결재자 블록 — APS 공통 (ACC Voucher 기준, 09-30) ──
+   결재 라인 미리보기(📋 결재 라인 + N차 배지 → …)와 결재자 블록 제목(N차 결재자 · 자동 지정/직접 선택 알약 · — 역할)을
+   ACC Voucher 와 같은 모양으로 맞춘다. 시스템마다 달랐던 표시(제목 앞 파란 점, "(고정)" 글자, 회색 배지)는 쓰지 않는다.
+   값은 acc_voucher/index.html 의 .appr-block · .appr-block-title · .line-step* · .appr-select-row · .appr-info 그대로. */
+.appr-line-preview{background:#f0f6ff;border:1px solid #c7e0f4;border-radius:6px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#323130}
+.appr-line-title{font-weight:600;color:#0078d4;margin-bottom:6px;font-size:12px}
+.appr-line-steps{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.line-step{display:inline-flex;align-items:center;gap:4px;margin:0 4px 0 0}
+.line-step-badge{display:inline-block;background:#0078d4;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700;margin:0}
+.line-step-badge.fixed{background:#107c10}
+.line-step-badge.extra{background:#d9a41a}
+.line-step-label{font-size:.75rem;color:#323130}
+.line-arrow{color:#a19f9d;font-size:13px;margin:0}
+.appr-block{background:#fff;border:1px solid #edebe9;border-radius:8px;padding:14px 16px;margin-bottom:10px}
+.appr-block.appr-fixed{background:#f0f6ff;border-color:#c7e0f4}
+.appr-block-title{display:block;font-size:12px;font-weight:700;color:#323130;margin-bottom:10px;line-height:1.5}
+.appr-block-title .hint{font-weight:400;color:#605e5c;margin:0 0 0 4px;font-size:12px;line-height:inherit}
+.appr-block-title .req-mark{color:#d83b01;margin:0}
+.appr-tag{display:inline-block;font-size:10px;border-radius:10px;padding:1px 6px;margin-left:4px;line-height:1.5;vertical-align:1px}
+.appr-tag.auto{color:#107c10;background:#dff6dd}
+.appr-tag.manual{color:#8a6914;background:#fff4ce}
+.appr-tag.extra{color:#8a6116;background:#fdf3d6}
+.appr-select-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.appr-select-row select{width:100%;box-sizing:border-box;margin:0;padding:7px 10px;border:1px solid #d2d0ce;border-radius:4px;font-size:12px;font-family:inherit;background:#fff;color:#323130}
+.appr-select-row select:disabled{background:#f3f2f1;color:#a19f9d}
+.appr-select-row select:focus{outline:none;border-color:#0078d4}
+.appr-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.appr-info input{width:100%;box-sizing:border-box;margin:0;padding:7px 10px;border:1px solid #d2d0ce;border-radius:4px;font-size:12px;font-family:inherit;background:#faf9f8;color:#323130}
+.appr-info input[readonly]{background:#f3f2f1;color:#605e5c}
+.appr-block .appr-title::before,.appr-title::before{content:none!important;display:none!important}
+@media (max-width:640px){.appr-select-row{grid-template-columns:1fr}.appr-info{grid-template-columns:1fr}}
 </style>
 </body>
 </html>
