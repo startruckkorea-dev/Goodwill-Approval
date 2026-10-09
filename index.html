@@ -291,6 +291,89 @@ html, * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: #94A3B8; background-clip: padding-box; }
 </style>
+<style id="aps-mobile">
+/* APS 모바일(10-09 · aps-mobile) — 767px 이하 전용. 웹 화면 무변경 */
+/* GW: 신청서 Company/FIN 격자 · Amount type/Total Amount 격자의 min-width:auto 넘침(467px) 해소, 상세 라벨 200px → 92px.
+   head 뒤 body 안 style 블록(헤더 V3 · 결재 블록)이 더 늦게 오므로 그쪽과 겹치는 규칙은 선택자를 한 단계 높였다. 기존 600·640px 규칙은 그대로 둔다. */
+@media (max-width: 767px) {
+  /* ── 로그인 ── 카드 좌우 12px 여백, 하단 안내 띠는 카드 아래 흐름으로(겹침 없음), 로그인 전엔 앱 footer 숨김 */
+  #login-screen { flex-direction: column; padding: 24px 12px 0; box-sizing: border-box; }
+  #login-screen .login-card { margin: auto 0; padding: 40px 24px 28px; border-radius: 16px; }
+  #login-screen .login-page-footer { position: static; flex-direction: column; align-items: center; gap: 2px; width: calc(100% + 24px); margin: 24px -12px 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); text-align: center; line-height: 1.5; font-size: 10.5px; }
+  #login-screen:not([style*="none"]) ~ footer { display: none; }
+
+  /* ── 틀 · 카드 ── */
+  #app { padding: 12px 12px 28px; }
+  #app .card { padding: 16px 14px; }
+  #app .card-title { font-size: .88rem; margin-bottom: 14px; }
+  #app .section-title { margin: 16px 0 10px; }
+
+  /* ── 헤더 V3 ── 카드 안쪽 16px 에 맞춰 띠를 다시 붙이고 제목 한 단계 작게, BU Admin 메일은 줄바꿈 허용 */
+  #app .app-header.aps-hdr { padding-left: 16px; padding-right: 16px; padding-bottom: 14px; margin-bottom: 12px; }
+  #app .aps-hdr > .aps-band { flex: 0 0 auto; width: calc(100% + 32px); margin: 0 -16px 10px; padding: 0 16px; }
+  #app .app-title { font-size: 1rem; }
+  #app .aps-hdr .hdr-contact { display: grid; max-width: 100%; }
+  #app .aps-hdr .hdr-contact-mail { min-width: 0; overflow-wrap: anywhere; }
+
+  /* ── 탭 ── 한 줄 가로 스크롤(막대 숨김), 터치 높이 42px */
+  #app .tabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-bottom: 12px; }
+  #app .tabs::-webkit-scrollbar { display: none; }
+  #app .tab-btn { flex: none; white-space: nowrap; min-height: 42px; padding: 8px 12px; }
+
+  /* ── 입력 글자 16px(iOS 자동 확대 방지) — 필터 · 확인 창 입력은 인라인 글자 크기라 !important ── */
+  input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea { font-size: 16px !important; }
+  #f-fin::placeholder, .fin-inp::placeholder { font-size: 14px; }
+
+  /* ── 신청서 ── Company | FIN 은 76px | 나머지(격자 칸 min-width:0), Amount type · Total Amount 는 1열로 */
+  #company-fin-grid[style*="100px"] { grid-template-columns: 76px minmax(0, 1fr) !important; }
+  #company-fin-grid > div, #f-fin-list, .fin-row { min-width: 0; }
+  .fin-btn { width: 40px; height: 40px; }
+  .fin-hint { white-space: normal; overflow: visible; }
+  #tab-form .form-group > div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: minmax(0, 1fr) !important; }
+  #tab-form .form-group > div > div { min-width: 0; }
+  #tab-form .form-group input, #tab-form .form-group select, #tab-form .form-group textarea { width: 100%; min-width: 0; padding: 9px 10px; }
+  #tab-form .form-group #f-fin, #tab-form .form-group .fin-inp { width: auto; }
+  .file-row input[type="file"] { min-width: 0; }
+  #app .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+  #app .btn-row > button { width: 100%; padding: 12px 10px; font-size: .9rem; border-radius: 8px; }
+  #app .appr-block { padding: 12px; }
+
+  /* ── 목록 · 결재함 · 관리자 ── 필터 줄: 선택 2열 · 검색 한 줄 꽉, 표는 상자만 가로 스크롤(요청 제목 칸이 0 으로 눌리지 않게 폭 확보) */
+  #tab-list .card > div:first-child > select, #tab-admin > div:first-child > select { flex: 1 1 calc(50% - 5px); min-width: 0; }
+  #list-search, #admin-search { flex: 1 1 100% !important; min-width: 0 !important; }
+  #tab-admin > div:first-child > div:last-child { flex: 1 1 100%; margin-left: 0 !important; justify-content: space-between; }
+  #tab-list .list-table { min-width: 1240px; }
+  #tab-appr .list-table { min-width: 1380px; }
+  #tab-admin .list-table { min-width: 1270px; }
+  body:not(.fin-ready) #tab-list .list-table { min-width: 1110px; }
+  body:not(.fin-ready) #tab-appr .list-table { min-width: 1250px; }
+  body:not(.fin-ready) #tab-admin .list-table { min-width: 1140px; }
+
+  /* ── 상세 모달 ── 좌우 10px · 높이 90% · 안쪽 스크롤, 라벨 200px → 92px 와 값 줄바꿈, × 와 PDF 단추가 겹치지 않게 */
+  #detail-modal .modal-box { width: calc(100% - 20px); max-width: none; max-height: 90vh; max-height: 90dvh; padding: 18px 16px 20px; -webkit-overflow-scrolling: touch; }
+  #detail-modal .modal-title { margin-right: 26px; font-size: .95rem; }
+  #detail-modal .modal-close { top: 10px; right: 10px; padding: 4px 6px; }
+  #detail-modal .det-lbl { width: 92px; padding-right: 8px; font-size: .74rem; }
+  #detail-modal .det-val { min-width: 0; overflow-wrap: anywhere; }
+  #detail-modal .appr-item { gap: 8px; align-items: flex-start; }
+  #detail-modal .appr-item > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+  #detail-modal .appr-item > :last-child:not(:first-child) { flex: none; white-space: nowrap; }
+  #detail-modal .modal-action { margin-top: 18px; }
+
+  /* ── 확인 · 안내 · 권한 없음 팝업 ── 화면 안에, 단추는 꽉 채움 */
+  #confirm-modal > div { width: calc(100% - 20px) !important; padding: 22px 18px 18px !important; }
+  #confirm-modal > div > div:last-child { display: grid !important; grid-template-columns: 1fr 1fr; }
+  #confirm-modal > div > div:last-child > button { padding: 11px 10px !important; }
+  .gw-alert-box { width: calc(100% - 40px); padding: 24px 20px; }
+  .gw-alert-btn { width: 100%; padding: 11px; }
+  #no-auth-modal > div { width: calc(100% - 32px) !important; padding: 28px 20px !important; }
+
+  /* ── footer(로그인 후) ── 가운데 정렬 두 줄 */
+  body > footer { margin-top: 28px !important; padding: 16px 12px !important; }
+  body > footer > div { flex-direction: column; justify-content: center !important; text-align: center; }
+  body > footer > div > div { text-align: center !important; }
+}
+</style>
 </head>
 <body>
 
