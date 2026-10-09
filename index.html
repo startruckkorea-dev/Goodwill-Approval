@@ -292,10 +292,21 @@ html, * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
 ::-webkit-scrollbar-thumb:hover { background: #94A3B8; background-clip: padding-box; }
 </style>
 <style id="aps-mobile">
-/* APS 모바일(10-09 · aps-mobile) — 767px 이하 전용. 웹 화면 무변경 */
+/* APS 모바일(10-09 · 10-10 2차 · aps-mobile) — 767px 이하 전용. 웹 화면 무변경 */
 /* GW: 신청서 Company/FIN 격자 · Amount type/Total Amount 격자의 min-width:auto 넘침(467px) 해소, 상세 라벨 200px → 92px.
    head 뒤 body 안 style 블록(헤더 V3 · 결재 블록)이 더 늦게 오므로 그쪽과 겹치는 규칙은 선택자를 한 단계 높였다. 기존 600·640px 규칙은 그대로 둔다. */
-@media (max-width: 767px) {
+@media screen and (max-width: 767px) {
+  /* ── iPhone(Safari) · Galaxy 대비 방어(10-10) — 글자 자동 확대 끔, 칸이 부모 폭을 넘지 않게, iOS 날짜 칸 높이·정렬 고정 ── */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  input, select, textarea, button { max-width: 100%; box-sizing: border-box; }
+  input[type=date], input[type=time], input[type=month], input[type=datetime-local] { min-width: 0; }
+  #tab-form .form-group select { height: 40px; }                       /* 선택 42 → 입력칸 40 과 같게 */
+  #app .appr-select-row select, #app .appr-info input { height: 36px; }   /* 결재자 부서 · 팀 · 직원 선택과 이름 · 이메일 칸 같은 높이 */
+  @supports (-webkit-touch-callout: none) {
+    input[type=date], input[type=time], input[type=month], input[type=datetime-local] { -webkit-appearance: none; appearance: none; display: block; min-height: 40px; line-height: normal; text-align: left; }
+    input::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; }
+  }
+
   /* ── 로그인 ── 카드 좌우 12px 여백, 하단 안내 띠는 카드 아래 흐름으로(겹침 없음), 로그인 전엔 앱 footer 숨김 */
   #login-screen { flex-direction: column; padding: 24px 12px 0; box-sizing: border-box; }
   #login-screen .login-card { margin: auto 0; padding: 40px 24px 28px; border-radius: 16px; }
@@ -333,7 +344,8 @@ html, * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
   #tab-form .form-group > div > div { min-width: 0; }
   #tab-form .form-group input, #tab-form .form-group select, #tab-form .form-group textarea { width: 100%; min-width: 0; padding: 9px 10px; }
   #tab-form .form-group #f-fin, #tab-form .form-group .fin-inp { width: auto; }
-  .file-row input[type="file"] { min-width: 0; }
+  .file-row input[type="file"] { min-width: 0; min-height: 36px; }
+  .file-row > .btn-file-reset { align-self: stretch; padding: 0 12px; }   /* 파일 칸(36px)과 Reset 단추 높이 맞춤(10-10) */
   #app .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
   #app .btn-row > button { width: 100%; padding: 12px 10px; font-size: .9rem; border-radius: 8px; }
   #app .appr-block { padding: 12px; }
@@ -348,17 +360,23 @@ html, * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
   body:not(.fin-ready) #tab-list .list-table { min-width: 1110px; }
   body:not(.fin-ready) #tab-appr .list-table { min-width: 1250px; }
   body:not(.fin-ready) #tab-admin .list-table { min-width: 1140px; }
+  /* 빈 결과 · 불러오는 중(한 칸짜리 줄)일 때는 머리줄을 접고 표를 화면 폭으로 — 넓힌 표 가운데에 있던 「…없습니다」 안내가 화면 밖이라 빈 표로 보이던 것(SCC 와 같은 방식, 10-10) */
+  #app .list-table:has(> tbody > tr:only-child > td[colspan]:only-child) { min-width: 0; }
+  #app .list-table:has(> tbody > tr:only-child > td[colspan]:only-child) > thead { display: none; }
 
-  /* ── 상세 모달 ── 좌우 10px · 높이 90% · 안쪽 스크롤, 라벨 200px → 92px 와 값 줄바꿈, × 와 PDF 단추가 겹치지 않게 */
-  #detail-modal .modal-box { width: calc(100% - 20px); max-width: none; max-height: 90vh; max-height: 90dvh; padding: 18px 16px 20px; -webkit-overflow-scrolling: touch; }
-  #detail-modal .modal-title { margin-right: 26px; font-size: .95rem; }
-  #detail-modal .modal-close { top: 10px; right: 10px; padding: 4px 6px; }
-  #detail-modal .det-lbl { width: 92px; padding-right: 8px; font-size: .74rem; }
-  #detail-modal .det-val { min-width: 0; overflow-wrap: anywhere; }
-  #detail-modal .appr-item { gap: 8px; align-items: flex-start; }
-  #detail-modal .appr-item > div:first-child { min-width: 0; overflow-wrap: anywhere; }
-  #detail-modal .appr-item > :last-child:not(:first-child) { flex: none; white-space: nowrap; }
-  #detail-modal .modal-action { margin-top: 18px; }
+  /* ── 상세 모달 ── 좌우 10px · 높이 90% · 안쪽 스크롤, 라벨 200px → 92px 와 값 줄바꿈, × 와 PDF 단추가 겹치지 않게.
+     PDF 내보내기는 html2canvas windowWidth:700 으로 상세를 다시 그리므로 699px 이하에서만 적용(PDF 배치 = 웹과 같게, 10-10) */
+  @media (max-width: 699px) {
+    #detail-modal .modal-box { width: calc(100% - 20px); max-width: none; max-height: 90vh; max-height: 90dvh; padding: 18px 16px 20px; -webkit-overflow-scrolling: touch; }
+    #detail-modal .modal-title { margin-right: 26px; font-size: .95rem; }
+    #detail-modal .modal-close { top: 10px; right: 10px; padding: 4px 6px; }
+    #detail-modal .det-lbl { width: 92px; padding-right: 8px; font-size: .74rem; }
+    #detail-modal .det-val { min-width: 0; overflow-wrap: anywhere; }
+    #detail-modal .appr-item { gap: 8px; align-items: flex-start; }
+    #detail-modal .appr-item > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+    #detail-modal .appr-item > :last-child:not(:first-child) { flex: none; white-space: nowrap; }
+    #detail-modal .modal-action { margin-top: 18px; }
+  }
 
   /* ── 확인 · 안내 · 권한 없음 팝업 ── 화면 안에, 단추는 꽉 채움 */
   #confirm-modal > div { width: calc(100% - 20px) !important; padding: 22px 18px 18px !important; }
