@@ -1897,7 +1897,7 @@ async function loadMyList(){
     dynLoadEnd();
     myListRaw = [];
     // 조회에 실패했는데 「신청 내역이 없습니다」 를 보여 주면 신청이 사라졌다고 읽는다.
-    tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:#a4262c">${escHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -1927,7 +1927,7 @@ function renderMyList(){
     ? '필터 '+items.length+'건 / 전체 '+myListRaw.length+'건'
     : '총 '+myListRaw.length+'건';
 
-  pgSet('list',items,(item,idx)=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem;text-align:center">${idx+1}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-fin" title="${escHtml(f.FIN||'')}">${escHtml(f.FIN||'-')}</td><td class="c-amt-type">${fmtGWAmount(f.Amount)}</td>${gwAmountValueCell(f)}<td style="text-align:center"><span class="badge-${f.Status||'대기'}">${f.Status||'대기'}</span></td><td style="font-size:.82rem;color:#605e5c">${fmtDate(f.RequestDate)}</td><td style="text-align:center;vertical-align:middle;padding:4px 6px">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, (status||source||amount||kw)?'조회 결과가 없습니다.':'신청 내역이 없습니다.', 11);
+  pgSet('list',items,(item,idx)=>{const f=item.fields;return`<tr onclick="showDetail(${item.id})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem;text-align:center">${idx+1}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-fin" title="${escHtml(f.FIN||'')}">${escHtml(f.FIN||'-')}</td><td class="c-amt-type">${escHtml(fmtGWAmount(f.Amount))}</td>${gwAmountValueCell(f)}<td style="text-align:center"><span class="badge-${escHtml(f.Status||'대기')}">${escHtml(f.Status||'대기')}</span></td><td style="font-size:.82rem;color:#605e5c">${fmtDate(f.RequestDate)}</td><td style="text-align:center;vertical-align:middle;padding:4px 6px">${_wdBtn(item.id,'GW_Approvals','GW_Requests',f.Status)}</td></tr>`;}, (status||source||amount||kw)?'조회 결과가 없습니다.':'신청 내역이 없습니다.', 11);
 }
 
 // 신청의 「요청 제목」 한 줄. 상세 화면의 RequestTitle 과 같은 값이다.
@@ -2007,11 +2007,11 @@ async function loadApprovalQueue(){
     const mine=Object.values(_dedupMap).sort((a,b)=>b.fields.RequestID-a.fields.RequestID);
     const rows=mine.map((item,idx)=>{
       const f=item.fields,rf=reqMap[String(f.RequestID)]||{};
-      return`<tr onclick="showDetail(${f.RequestID})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(rf.RequesterEmail||'')}">${escHtml(rf.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(rf.Title||'')}">${escHtml(rf.Title||'-')}</td>${reqTitleCell(rf)}<td><span class="${gwSourceCls(rf.Source)}">${escHtml(rf.Source||'')}</span></td><td class="c-type" title="${escHtml(rf.GoodwillType||'')}">${escHtml(rf.GoodwillType||'')}</td><td class="c-fin" title="${escHtml(rf.FIN||'')}">${escHtml(rf.FIN||'-')}</td><td class="c-amt-type">${fmtGWAmount(rf.Amount)}</td>${gwAmountValueCell(rf)}<td><span class="badge-${rf.Status||'대기'}">${rf.Status||''}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
+      return`<tr onclick="showDetail(${f.RequestID})" style="cursor:pointer"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(rf.RequesterEmail||'')}">${escHtml(rf.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(rf.Title||'')}">${escHtml(rf.Title||'-')}</td>${reqTitleCell(rf)}<td><span class="${gwSourceCls(rf.Source)}">${escHtml(rf.Source||'')}</span></td><td class="c-type" title="${escHtml(rf.GoodwillType||'')}">${escHtml(rf.GoodwillType||'')}</td><td class="c-fin" title="${escHtml(rf.FIN||'')}">${escHtml(rf.FIN||'-')}</td><td class="c-amt-type">${escHtml(fmtGWAmount(rf.Amount))}</td>${gwAmountValueCell(rf)}<td><span class="badge-${escHtml(rf.Status||'대기')}">${escHtml(rf.Status||'')}</span></td><td>${fmtDate(rf.RequestDate)}</td><td onclick="event.stopPropagation()"><button class="btn-approve" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'승인',${f.RequestID})">승인</button> <button class="btn-reject" style="padding:3px 10px;font-size:.72rem" onclick="showConfirm(${item.id},'반려',${f.RequestID})">반려</button></td></tr>`;
     });
     dynLoadEnd(); pgSet('appr',rows,r=>r,'결재 대기 항목이 없습니다.',12);
     const badge=document.getElementById('appr-badge');badge.textContent=mine.length;badge.style.display=mine.length?'inline':'none';
-  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:#a4262c">${escHtml(e.message)}</td></tr>`;}
 }
 
 // ── Process Approval ──
@@ -2229,7 +2229,7 @@ async function loadAdminList(){
     _adminDataCache = data.value.sort((a,b)=>b.id-a.id);
     dynLoadEnd();
     renderAdminList();
-  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#a4262c">${e.message}</td></tr>`;}
+  }catch(e){dynLoadEnd();tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#a4262c">${escHtml(e.message)}</td></tr>`;}
 }
 
 function renderAdminList(){
@@ -2249,7 +2249,7 @@ function renderAdminList(){
            (f.GoodwillType||'').toLowerCase().includes(kw);
   });
   document.getElementById('admin-count').textContent='총 '+items.length+'건';
-  pgSet('admin',items,(item,idx)=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(f.RequesterEmail||'')}">${escHtml(f.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-fin" title="${escHtml(f.FIN||'')}">${escHtml(f.FIN||'-')}</td><td class="c-amt-type">${fmtGWAmount(f.Amount)}</td>${gwAmountValueCell(f)}<td><span class="badge-${f.Status||'대기'}">${f.Status||''}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',11);
+  pgSet('admin',items,(item,idx)=>{const f=item.fields;return`<tr style="cursor:pointer" onclick="showDetail(${item.id})"><td style="color:#a19f9d;font-size:.68rem">${idx+1}</td><td class="c-mail" title="${escHtml(f.RequesterEmail||'')}">${escHtml(f.RequesterEmail||'')}</td><td style="color:#0078d4" title="${escHtml(f.Title||'')}">${escHtml(f.Title||'-')}</td>${reqTitleCell(f)}<td><span class="${gwSourceCls(f.Source)}">${escHtml(f.Source||'')}</span></td><td class="c-type" title="${escHtml(f.GoodwillType||'')}">${escHtml(f.GoodwillType||'')}</td><td class="c-fin" title="${escHtml(f.FIN||'')}">${escHtml(f.FIN||'-')}</td><td class="c-amt-type">${escHtml(fmtGWAmount(f.Amount))}</td>${gwAmountValueCell(f)}<td><span class="badge-${escHtml(f.Status||'대기')}">${escHtml(f.Status||'')}</span></td><td>${fmtDate(f.RequestDate)}</td></tr>`;},'조회 결과가 없습니다.',11);
 }
 
 /* ═══ APS 공통 — 첨부 병합 · 머리띠 (APS-ATTACH v1 · 2026-10-06 일원화) ═══════════════════════════
@@ -2563,7 +2563,12 @@ async function showDetail(id){
 
     const yn=v=>!v?'-':v==='yes'?'YES':v==='no'?'NO':v;
     const sec=t=>`<div class="det-sec">${t}</div>`;
-    const row=(l,v)=>`<div class="det-row"><span class="det-lbl">${l}</span><span class="det-val">${v||'-'}</span></div>`;
+    // 값은 기본으로 이스케이프한다(10-10, APS 상세 row/rowRaw 와 같은 방식).
+    // 08-12 Exception 추가 때 사유(자유 입력)가 'Exception(사유)' 로 Type 에 합쳐져 들어오게 됐는데,
+    // 같은 날 보안 수정은 Description · 요청 제목만 대상이라 Type 이 이스케이프 없이 남아 있었다.
+    // 상태 배지처럼 코드가 만든 HTML 만 rowRaw 로 넘긴다.
+    const rowRaw=(l,v)=>`<div class="det-row"><span class="det-lbl">${l}</span><span class="det-val">${v||'-'}</span></div>`;
+    const row=(l,v)=>rowRaw(l,(v===undefined||v===null||v==='')?'':escHtml(v));
 
     // 첨부파일
     // 첨부가 없을 때는 「결재 이력이 없습니다.」와 같은 규칙(가운데 정렬 · 패딩)으로 표시한다.
@@ -2582,7 +2587,7 @@ async function showDetail(id){
       filesHtml=fileEntries.map(entry=>{
         if(!entry.trim()) return '';
         const firstSep = entry.indexOf('||');
-        if(firstSep < 0) return `<div style="padding:4px 0;font-size:.8rem;color:#605e5c">📎 ${entry}</div>`;
+        if(firstSep < 0) return `<div style="padding:4px 0;font-size:.8rem;color:#605e5c">📎 ${escHtml(entry)}</div>`;
         const name = entry.substring(0, firstSep);
         const rest = entry.substring(firstSep + 2);
 
@@ -2595,26 +2600,26 @@ async function showDetail(id){
             if(sepIdx>=0){
               const driveId = decoded.substring(0, sepIdx);
               const itemId  = decoded.substring(sepIdx+3);
-              return`<div style="padding:4px 0;font-size:.8rem">📎 <a href="#" class="file-dl-link" data-drive="${encodeURIComponent(driveId)}" data-id="${encodeURIComponent(itemId)}" data-name="${encodeURIComponent(name)}" style="color:#0078d4;cursor:pointer">${name}</a></div>`;
+              return`<div style="padding:4px 0;font-size:.8rem">📎 <a href="#" class="file-dl-link" data-drive="${encodeURIComponent(driveId)}" data-id="${encodeURIComponent(itemId)}" data-name="${encodeURIComponent(name)}" style="color:#0078d4;cursor:pointer">${escHtml(name)}</a></div>`;
             }
           }catch(ex){}
-          return`<div style="padding:4px 0;font-size:.8rem;color:#605e5c">📎 ${name}</div>`;
+          return`<div style="padding:4px 0;font-size:.8rem;color:#605e5c">📎 ${escHtml(name)}</div>`;
         }
 
         // 구 형식: name||driveId||itemId (드라이브ID에 ||가 없다고 가정)
         const parts = entry.split('||');
         if(parts.length===3){
           const driveId=parts[1], itemId=parts[2];
-          return`<div style="padding:4px 0;font-size:.8rem">📎 <a href="#" class="file-dl-link" data-drive="${encodeURIComponent(driveId)}" data-id="${encodeURIComponent(itemId)}" data-name="${encodeURIComponent(name)}" style="color:#0078d4;cursor:pointer">${name}</a></div>`;
+          return`<div style="padding:4px 0;font-size:.8rem">📎 <a href="#" class="file-dl-link" data-drive="${encodeURIComponent(driveId)}" data-id="${encodeURIComponent(itemId)}" data-name="${encodeURIComponent(name)}" style="color:#0078d4;cursor:pointer">${escHtml(name)}</a></div>`;
         }
         // parts가 4개 이상인 경우 (itemId에 || 가 포함된 경우) - 2번째 || 이후 전부 itemId
         if(parts.length>3){
           const driveId=parts[1];
           const itemId=parts.slice(2).join('||');
-          return`<div style="padding:4px 0;font-size:.8rem">📎 <a href="#" class="file-dl-link" data-drive="${encodeURIComponent(driveId)}" data-id="${encodeURIComponent(itemId)}" data-name="${encodeURIComponent(name)}" style="color:#0078d4;cursor:pointer">${name}</a></div>`;
+          return`<div style="padding:4px 0;font-size:.8rem">📎 <a href="#" class="file-dl-link" data-drive="${encodeURIComponent(driveId)}" data-id="${encodeURIComponent(itemId)}" data-name="${encodeURIComponent(name)}" style="color:#0078d4;cursor:pointer">${escHtml(name)}</a></div>`;
         }
         // 링크 없는 파일도 클릭 가능하게 (회색으로 표시)
-        return`<div style="padding:4px 0;font-size:.8rem;color:#a19f9d">📎 ${name} <span style="font-size:.65rem">(링크 정보 없음)</span></div>`;
+        return`<div style="padding:4px 0;font-size:.8rem;color:#a19f9d">📎 ${escHtml(name)} <span style="font-size:.65rem">(링크 정보 없음)</span></div>`;
       }).filter(Boolean).join('');
     }
 
@@ -2622,7 +2627,7 @@ async function showDetail(id){
     const apprHtml=apprList.map(a=>{
       const af=a.fields;
       const st=af.Status==='대기'?'status-대기':af.Status==='승인'?'status-승인':af.Status==='반려'?'status-반려':'status-대기잠김';
-      return`<div class="appr-item"><div>${(()=>{const _r=af.ApproverRole||'',_o=String(af.ApprovalOrder||'');const _dm=_r.match(/\s*·\s*대리\((.+)\)\s*$/);const _b=_dm?_r.slice(0,_dm.index):_r;const _t=_b.startsWith(_o+'차')?_b.slice(_o.length+1).trim():_b;const _dp=_dm?(()=>{const _m=String(_dm[1]).match(/^(.*?)\s*<([^>]+)>\s*$/);return {n:(_m?_m[1]:_dm[1]).trim(),e:_m?_m[2].trim():''};})():null;const _d=_dp?' <span title="'+(()=>{const _s=String(af.Status||'').trim();return _s==='승인'||_s==='승인완료'?'Approved on behalf of':_s==='반려'?'Rejected on behalf of':_s.indexOf('철회')===0?'Withdrawn on behalf of':'On behalf of';})()+' '+escHtml((_dp.e||_dp.n))+'" style="background:#fff4ce;border:1px solid #f2d68c;color:#8a5a00;font-size:10px;font-weight:600;letter-spacing:.1px;border-radius:10px;padding:1px 9px;margin-left:6px;white-space:nowrap;vertical-align:1px"><span style="font-weight:400;opacity:.8">'+(()=>{const _s=String(af.Status||'').trim();return _s==='승인'||_s==='승인완료'?'Approved on behalf of':_s==='반려'?'Rejected on behalf of':_s.indexOf('철회')===0?'Withdrawn on behalf of':'On behalf of';})()+' </span><b style="font-weight:700">'+escHtml((_dp.e||_dp.n))+'</b>'+'</span>':'';const _db='';return '<b>'+_o+'차</b> '+_t+_d+_db;})()}<br><span style="font-size:.72rem;color:#605e5c">${escHtml(af.ApproverName||'')} · ${escHtml(af.ApproverEmail||'')}</span>${af.ApprovalDate?`<br><span style="font-size:.72rem;color:#a19f9d">${fmtDate(af.ApprovalDate)}</span>`:''  }${af.Comment?`<br><span style="font-size:.72rem;background:#fff;border:1px solid #edebe9;border-radius:4px;padding:2px 6px;display:inline-block;margin-top:2px">💬 ${escHtml(spText(af.Comment))}</span>`:''}</div><span class="${st}">${af.Status}</span></div>`;
+      return`<div class="appr-item"><div>${(()=>{const _r=af.ApproverRole||'',_o=String(af.ApprovalOrder||'');const _dm=_r.match(/\s*·\s*대리\((.+)\)\s*$/);const _b=_dm?_r.slice(0,_dm.index):_r;const _t=_b.startsWith(_o+'차')?_b.slice(_o.length+1).trim():_b;const _dp=_dm?(()=>{const _m=String(_dm[1]).match(/^(.*?)\s*<([^>]+)>\s*$/);return {n:(_m?_m[1]:_dm[1]).trim(),e:_m?_m[2].trim():''};})():null;const _d=_dp?' <span title="'+(()=>{const _s=String(af.Status||'').trim();return _s==='승인'||_s==='승인완료'?'Approved on behalf of':_s==='반려'?'Rejected on behalf of':_s.indexOf('철회')===0?'Withdrawn on behalf of':'On behalf of';})()+' '+escHtml((_dp.e||_dp.n))+'" style="background:#fff4ce;border:1px solid #f2d68c;color:#8a5a00;font-size:10px;font-weight:600;letter-spacing:.1px;border-radius:10px;padding:1px 9px;margin-left:6px;white-space:nowrap;vertical-align:1px"><span style="font-weight:400;opacity:.8">'+(()=>{const _s=String(af.Status||'').trim();return _s==='승인'||_s==='승인완료'?'Approved on behalf of':_s==='반려'?'Rejected on behalf of':_s.indexOf('철회')===0?'Withdrawn on behalf of':'On behalf of';})()+' </span><b style="font-weight:700">'+escHtml((_dp.e||_dp.n))+'</b>'+'</span>':'';const _db='';return '<b>'+escHtml(_o)+'차</b> '+escHtml(_t)+_d+_db;})()}<br><span style="font-size:.72rem;color:#605e5c">${escHtml(af.ApproverName||'')} · ${escHtml(af.ApproverEmail||'')}</span>${af.ApprovalDate?`<br><span style="font-size:.72rem;color:#a19f9d">${fmtDate(af.ApprovalDate)}</span>`:''  }${af.Comment?`<br><span style="font-size:.72rem;background:#fff;border:1px solid #edebe9;border-radius:4px;padding:2px 6px;display:inline-block;margin-top:2px">💬 ${escHtml(spText(af.Comment))}</span>`:''}</div><span class="${st}">${escHtml(af.Status==null?'':af.Status)}</span></div>`;
     }).join('');
 
     // 내 결재 대기 건
@@ -2636,10 +2641,10 @@ async function showDetail(id){
       sec('기본 정보')+
       // 상태는 「이 건이 지금 어떤가」라 먼저 보게 된다. 신청자 바로 아래로 올린다.
       row('제목',f.Title)+row('신청자',f.RequesterEmail)+
-      row('상태','<span class="badge-'+(f.Status||'대기')+'">'+(f.Status||'대기')+'</span>')+
+      rowRaw('상태','<span class="badge-'+escHtml(f.Status||'대기')+'">'+escHtml(f.Status||'대기')+'</span>')+
       row('신청일',fmtDate(f.RequestDate))+
       row('Company',f.Company)+
-      (_gwFinReady||f.FIN?row('FIN <span style="font-size:.72em;color:#605e5c;font-weight:400">(차대번호)</span>',f.FIN?escHtml(f.FIN):'-'):'')+
+      (_gwFinReady||f.FIN?row('FIN <span style="font-size:.72em;color:#605e5c;font-weight:400">(차대번호)</span>',f.FIN||'-'):'')+
       row('Source',f.Source)+row('Amount type',fmtGWAmount(f.Amount))+
       // AmountValue 가 생기기 전의 기존 건은 값이 없다. 없는 값을 구간 하한으로
       // 채워 넣으면 실제 입력 금액과 구분되지 않으므로 「-」 로 둔다.
@@ -2690,7 +2695,7 @@ async function showDetail(id){
         }catch(e){alert('다운로드 오류: '+e.message);}
       });
     });
-  }catch(e){document.getElementById('modal-content').innerHTML='<p style="color:#a4262c">오류: '+e.message+'</p>';}
+  }catch(e){document.getElementById('modal-content').innerHTML='<p style="color:#a4262c">오류: '+escHtml(e.message)+'</p>';}
 }
 function closeModal(){
   const pdfBtn = document.getElementById('btn-export-pdf');
