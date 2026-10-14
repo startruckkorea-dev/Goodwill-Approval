@@ -1098,12 +1098,39 @@ function logAction(systemName, action, detail) {
         timestampKST: `${dateStr} ${p(now.getUTCHours())}:${p(now.getUTCMinutes())}:${p(now.getUTCSeconds())}`,
         user: rawUser, system: systemName, action, detail: detail || {}
       });
-      await fetch(GRAPH + '/drives/' + driveId + '/root:' + path + ':/content', {
+      const _lr = await fetch(GRAPH + '/drives/' + driveId + '/root:' + path + ':/content', {
         method: 'PUT', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body
       });
+      // 저장이 거부돼도(403 · 429 · 5xx) 흔적이 없던 것 — APS(10-10)처럼 콘솔에 경고만 남긴다(10-15). 원 기능엔 영향 없음
+      if (_lr && !_lr.ok) console.warn('[Log] 기록 실패(무시됨, 원 기능엔 영향 없음): HTTP ' + _lr.status + ' —', systemName, action);
     } catch(e) { console.warn('[Log] 기록 실패(무시됨):', e.message); }
   })();
 }
+/* ══ 데이터 변경 기록(10-15) ══
+   상신 · 결재 승인 · 반려 · 철회를 위 logAction 으로 Logging_data 에 남긴다.
+   action 이름 · detail 모양은 APS 통합 결재함(Logging_data/APS 「결재 승인」 · 「결재 반려」)에 맞춘다 —
+   신청번호 · 제목 · 결과 · 차수 · 결재자 · 처리자 · 대리 · 역할 · 의견 글자 수(의견 원문 · 금액 · FIN · 계좌 · 연락처 같은 값은 넣지 않는다).
+   IT 계정 제외 규칙(10-01, IT Manager · IT system service)은 logAction 안에서 그대로 적용된다(감사 예외를 두지 않는다 — 10-15 결정).
+   실제 저장(Graph 쓰기)이 끝난 뒤에만 부르고 기다리지 않는다. detail 을 만들다 오류가 나도 원 기능으로 번지지 않게 감싼다.
+   APS 통합 결재함에서 처리한 결재는 APS 가 목록에 직접 써서 이 화면 코드를 거치지 않는다 — 같은 결재가 두 번 남지 않는다. */
+function logChange(systemName, action, mk) {
+  try { logAction(systemName, action, typeof mk === 'function' ? mk() : (mk || {})); }
+  catch (e) { console.warn('[Log] 기록 생략(원 기능엔 영향 없음):', action, e && e.message); }
+}
+function logAprDetail(f, extra) {   // 결재행 fields(처리 전 값) → APS 와 같은 차수 · 결재자 · 처리자 · 대리 · 역할
+  f = f || {};
+  const orig = String(f.ApproverEmail || '');
+  let dg = null; try { dg = (typeof aacDelegatorOf === 'function') ? aacDelegatorOf(orig) : null; } catch (e) {}
+  return Object.assign({
+    차수: f.ApprovalOrder == null ? '' : f.ApprovalOrder,
+    결재자: orig,
+    처리자: String((typeof user !== 'undefined' && user && (user.email || user.username)) || ''),
+    대리: dg ? '예 — ' + (f.ApproverName || dg.name || orig) + ' 님 대신' : '',
+    역할: String(f.ApproverRole || '')
+  }, extra || {});
+}
+function logErrText(e) { return String((e && e.message) || e || '').slice(0, 200); }
+function logReqTitle(f) { return String((f && f.Title) || '').replace(/-\d+$/, ''); }   // 결재행 Title(GW-…_ID-12-3) → 신청 제목(GW-…_ID-12)
 // 한 호출이 재시도로 쓸 수 있는 총 대기 시간과 횟수.
 // 예전에는 3회 고정이고 상한이 없었다. 서버가 Retry-After 로 60초를 요구하면
 // 그대로 60초를 기다려 화면이 그동안 멈췄다. 사용자는 먹통이라 여기고
@@ -1658,6 +1685,7 @@ function resolveTypeValue(){
 
 // ── Submit ──
 async function submitForm(){
+  let _lgRid = '';   // 기록용 신청 번호(10-15) — 신청 행을 만든 뒤에 채운다
   const source=document.getElementById('f-source').value;
   const amount=document.getElementById('f-amount').value;
   const type  =resolveTypeValue();   // Exception이면 'Exception(사유)' 형태로 반환
@@ -1731,6 +1759,7 @@ async function submitForm(){
     };
     const item=await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items','POST',{fields});
     const reqId=parseInt(item.id);
+    _lgRid = reqId;
     await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Title:'GW-'+new Date(new Date().getTime()+9*3600*1000).toISOString().slice(0,10)+'_ID-'+reqId}});
     // 사용자가 입력한 제목은 별도 필드(RequestTitle)로 저장 - 자동생성 ID(Title)는 그대로 유지해 기존 연동(Power Automate 등)에 영향 없도록 함
     try {
@@ -1828,9 +1857,13 @@ async function submitForm(){
       // 검증 조회 자체가 실패한 경우 — 생성은 됐을 수 있으므로 되돌리지 않는다
       console.warn('[신청] 결재선 검증 조회 실패(생성은 완료됨):', ce && ce.message);
     }
+    logChange('GW', '상신', () => ({ 신청번호: reqId, 제목: _gwVid, 출처: source, 유형: String(type||'').split('(')[0], 결재단계: approversFinal.length }));   // 10-15
     showAlert('신청이 완료되었습니다.', _gwVid);
     resetForm(); switchTab('list');
-  }catch(e){showAlert('오류가 발생했습니다.', e.message, '⚠️');}
+  }catch(e){
+    logChange('GW', '상신 실패', () => ({ 신청번호: _lgRid || '', 오류: logErrText(e) }));   // 10-15
+    showAlert('오류가 발생했습니다.', e.message, '⚠️');
+  }
   finally{loading(false);}
 }
 
@@ -2072,13 +2105,20 @@ async function confirmApproval(){
 }
 
 async function processApproval(apprId,action,reqId,comment=''){
+  // 결재 처리 기록(10-15) — APS 통합 결재함과 같은 「결재 승인」 · 「결재 반려」. 결재행을 쓴 뒤에만 남기고, 쓰기 전 오류는 「…실패」
+  const _lgAct = action==='반려' ? '결재 반려' : '결재 승인';
+  let _lgF = null, _lgW = false, _lgRes = '';
+  const _lg = (what, res, ex) => logChange('GW', what, () => Object.assign({ 신청번호: Number(reqId), 제목: logReqTitle(_lgF), 결과: res }, logAprDetail(_lgF, { 의견글자수: String(comment||'').length, 결재행: apprId }), ex || {}));
   loading(true);
   try{
     const _cur=await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+apprId+'?$expand=fields');
     if(_cur.fields.Status!=='대기'){showAlert('이미 처리된 결재 항목입니다.','다른 창에서 처리되었거나 이미 완료된 항목입니다.','⚠️');loadApprovalQueue();return;}
+    _lgF = _cur.fields;
     await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+apprId,'PATCH',{fields:aacPatchWith({Status:action==='승인'?'승인':action,Comment:comment,ApprovalDate:new Date().toISOString()},_cur.fields)});
+    _lgW = true;
     if(action==='반려'){
       await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'반려'}});
+      _lgRes = '반려 — 신청 반려';
     } else {
       // 다음 잠긴 결재자를 '대기'로 풀어 준다. 없으면 신청을 승인완료로 마감한다.
       //
@@ -2095,6 +2135,7 @@ async function processApproval(apprId,action,reqId,comment=''){
       const _rows = _apRes.value || [];
       if(!_rows.length){
         console.error('[결재] 결재 행 조회 결과가 비어 있음 — 승인완료 전환 중단. RequestID:', reqId);
+        _lgRes = '승인 기록 · 다음 단계로 넘기지 못함(결재 행 조회 0건)'; _lg(_lgAct, _lgRes);   // APS 와 같은 문구(10-15)
         showAlert('승인은 기록되었으나 다음 단계로 넘기지 못했습니다.',
           '잠시 후 결재함에서 상태를 다시 확인해 주세요. 계속 같은 증상이면 IT팀(stk_it@hyosung.com)에 알려주세요.','⚠️');
         closeModal(); loadApprovalQueue();
@@ -2102,12 +2143,17 @@ async function processApproval(apprId,action,reqId,comment=''){
       }
       const next=_rows.filter(i=>(i.fields.Status||'').trim()==='대기(잠김)')
                       .sort((a,b)=>a.fields.ApprovalOrder-b.fields.ApprovalOrder);
-      if(next.length) await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+next[0].id,'PATCH',{fields:{Status:'대기'}});
-      else await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'승인완료'}});
+      if(next.length){ await api('/sites/'+siteId+'/lists/'+LIST_APR+'/items/'+next[0].id,'PATCH',{fields:{Status:'대기'}}); _lgRes = '승인 — ' + (next[0].fields.ApprovalOrder ?? '') + '차 결재자에게 넘김'; }
+      else{ await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId,'PATCH',{fields:{Status:'승인완료'}}); _lgRes = '승인 — 최종 승인(신청 승인완료)'; }
     }
+    _lg(_lgAct, _lgRes || '승인');
     closeModal(); loadApprovalQueue();
     showAlert(action+' 처리되었습니다.', '', action==='반려'?'❌':'✅');
-  }catch(e){showAlert('오류가 발생했습니다.', e.message, '⚠️');}
+  }catch(e){
+    if (_lgW && !_lgRes) _lg(_lgAct, '결재행은 기록됨 · 이후 단계 오류 — ' + logErrText(e));   // APS 와 같은 문구
+    else if (!_lgW) _lg(_lgAct + ' 실패', '처리 안 함', { 오류: logErrText(e) });
+    showAlert('오류가 발생했습니다.', e.message, '⚠️');
+  }
   finally{loading(false);}
 }
 
@@ -2161,6 +2207,7 @@ function _xlText(v) {
   return s;
 }
 async function exportGWAdminExcel(){
+  let _xlLog = null;   // 기록 내용(10-15) — 파일을 만든 뒤에 남긴다
   loading(true,'Excel 생성 중...');
   try{
     const [reqData, apprData] = await Promise.all([
@@ -2183,7 +2230,8 @@ async function exportGWAdminExcel(){
              (f.GoodwillType||'').toLowerCase().includes(kw);
     });
     if(!items.length){loading(false);alert('내보낼 데이터가 없습니다.');return;}
-    logAction('GW', 'Excel 내보내기', { 건수: items.length, 필터: { 상태: status||'전체', 출처: source||'전체', 금액: amount||'전체', 검색어: kw||'' } });
+    // 출력 기록은 파일을 만든 뒤로 옮겼다(10-15) — 예전에는 만들기 전에 「성공」 으로 남아 실패해도 흔적이 없었다
+    _xlLog = () => ({ 건수: items.length, 필터: { 상태: status||'전체', 출처: source||'전체', 금액: amount||'전체', 검색어: kw||'' } });
 
     // 결재자 맵 구성 (reqId → 결재자 배열)
     const apprMap = {};
@@ -2277,7 +2325,11 @@ async function exportGWAdminExcel(){
     const now = new Date(new Date().getTime()+9*3600*1000);
     const ds = now.getUTCFullYear()+String(now.getUTCMonth()+1).padStart(2,'0')+String(now.getUTCDate()).padStart(2,'0')+'_'+String(now.getUTCHours()).padStart(2,'0')+String(now.getUTCMinutes()).padStart(2,'0');
     XLSX.writeFile(wb, 'Goodwill_Admin_'+ds+'.xlsx');
-  }catch(e){alert('Excel 생성 실패: '+e.message);}
+    logChange('GW', 'Excel 내보내기', _xlLog);
+  }catch(e){
+    logChange('GW', 'Excel 내보내기 실패', () => Object.assign(_xlLog ? _xlLog() : {}, { 오류: logErrText(e) }));
+    alert('Excel 생성 실패: '+e.message);
+  }
   finally{loading(false);}
 }
 
@@ -2884,6 +2936,7 @@ async function gwRollbackIncomplete(reqId, vid, made, total){
     await api('/sites/'+siteId+'/lists/'+LIST_REQ+'/items/'+reqId, 'PATCH', {fields:{Status:'철회'}});
     ok = true;
   } catch(e){ console.error('[신청] 자동 철회 실패:', e && e.message); }
+  logChange('GW', '상신 실패', () => ({ 신청번호: reqId, 제목: vid, 결과: '결재선 ' + made + '/' + total + '단계만 생성 — ' + (ok ? '신청 자동 철회' : '자동 철회도 실패') }));   // 10-15
 
   if(ok) showAlert('신청을 완료하지 못했습니다',
     `결재선이 ${made}/${total}단계만 만들어져 이 신청(${vid})은 자동으로 철회 처리했습니다. 결재는 시작되지 않았으니 다시 신청해 주세요.`, '⚠️');
@@ -2918,10 +2971,12 @@ async function withdrawRequest(e, reqId, aprList, reqList) {
       .map(i => api('/sites/'+siteId+'/lists/'+aprList+'/items/'+i.id, 'PATCH', {fields:{Status:'철회(잠김)'}})
     ));
     await api('/sites/'+siteId+'/lists/'+reqList+'/items/'+reqId, 'PATCH', {fields:{Status:'철회'}});
+    logChange('GW', '철회', () => ({ 신청번호: Number(reqId), 제목: logReqTitle(sorted[0] && sorted[0].fields), 결재행: myAprs.length }));   // 10-15
     if(typeof showAlert === 'function') showAlert('철회 완료','신청이 철회되었습니다.','✅');
     else alert('신청이 철회되었습니다.');
     loadMyList();
   } catch(err) {
+    logChange('GW', '철회 실패', () => ({ 신청번호: Number(reqId), 오류: logErrText(err) }));   // 10-15
     alert('오류: ' + err.message);
   }
 }
