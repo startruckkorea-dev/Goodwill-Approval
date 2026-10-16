@@ -464,7 +464,7 @@ button[style*="display:none"]+.pdf-log-note,button[style*="display: none"]+.pdf-
   var av = document.getElementById('aps-av'), av2 = document.getElementById('aps-av2'), nm = document.getElementById('aps-acct-nm');
   function draw() {
     var full = ((src.querySelector('.hdr-user-name') || src).textContent || '').trim();
-    var en = full.match(/\(([A-Za-z][A-Za-z .'-]*)\)\s*$/);                 // 「… (Jimmy Lee)」
+    var en = full.match(/\(([A-Za-z][A-Za-z .'-]*)\)\s*$/);                 // 「… (Gildong Hong)」
     var latin = /^[A-Za-z]/.test(full);                                      // 영문만 있는 이름(John Smith) 은 앞 두 단어 · 두 글자 이니셜
     var short = en ? en[1].trim() : (latin ? full.split(/\s+/).slice(0, 2).join(' ') : (full.split(/\s+/)[0] || ''));
     var ini = (en || latin) ? short.split(/\s+/).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase() : short.slice(0, 1);
@@ -863,7 +863,7 @@ let _configLoaded = false;
 let _gwFinReady = false;
 function normFin(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
 /* FIN 여러 개(09-24): 쉼표(또는 ; / 줄바꿈)로 나눠 적으면 「A, B」 로 정리한다. 저장 · 목록 · Excel 도 이 형식.
-   한 조각 안의 공백 · 하이픈은 지운다(「W1T 963425 R0738112」 도 한 FIN). 구분자 없이 붙여 적은 34자 · 51자는 17자씩 나눈다. */
+   한 조각 안의 공백 · 하이픈은 지운다(「W1T 123456 A1234567」 도 한 FIN). 구분자 없이 붙여 적은 34자 · 51자는 17자씩 나눈다. */
 function finTokens(v){
   const out=[];
   String(v||'').toUpperCase().split(/[,;\/\n]+/).forEach(piece=>{
