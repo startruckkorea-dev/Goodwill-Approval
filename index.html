@@ -1222,6 +1222,33 @@ async function loadSystemConfig() {
     return null;
   }
 }
+/* IT 문의 메일(10-17) — 코드에 메일 주소를 두지 않는다. system_config_final.xlsx 의 GW_IT_CONTACT(C열) → 없으면 CONTACT_EMAIL 순으로 채우고,
+   설정을 못 읽었으면(로그인 전 · 읽기 실패) 메일 없이 「IT팀」 만 보인다. 형식이 맞는 메일만 받으므로 HTML 에 그대로 넣어도 안전하다.
+   data-it-contact 가 붙은 화면 칸은 설정을 읽은 뒤 메일 링크로 바뀐다. */
+var IT_CONTACT_KEY = 'GW_IT_CONTACT', __itMail = '';
+function itTeam(label) { label = label || 'IT팀'; return __itMail ? label + '(' + __itMail + ')' : label; }
+function itApplyDom() {
+  try {
+    document.querySelectorAll('[data-it-contact]').forEach(function (el) {
+      el.textContent = '';
+      if (!__itMail) { el.textContent = el.getAttribute('data-it-contact') || 'IT팀'; return; }
+      var a = document.createElement('a'); a.href = 'mailto:' + __itMail; a.textContent = __itMail;
+      a.style.color = '#0078d4'; a.style.textDecoration = 'none'; el.appendChild(a);
+    });
+  } catch (e) {}
+}
+function itSetFromCfg(cfg) {
+  try {
+    if (!cfg || typeof cfg !== 'object') return;
+    var keys = Object.keys(cfg);
+    var pick = function (k) { var kk = keys.find(function (x) { return String(x).trim().toUpperCase() === k.toUpperCase(); }); return kk && cfg[kk] ? String(cfg[kk].email || '').trim().toLowerCase() : ''; };
+    var ok = function (v) { return /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v); };
+    var mail = [pick(IT_CONTACT_KEY), pick('CONTACT_EMAIL')].find(ok);
+    if (mail) __itMail = mail;
+    itApplyDom();
+  } catch (e) {}
+}
+loadSystemConfig = (function (orig) { return async function () { var c = await orig.apply(this, arguments); itSetFromCfg(c || (typeof _sysConfig !== 'undefined' ? _sysConfig : null)); return c; }; })(loadSystemConfig);
 function cfgVal(cfg, key, defaultObj) {
   if (!cfg || !cfg[key]) return defaultObj;
   const v = cfg[key];
@@ -1632,7 +1659,7 @@ function renderApproverBlocks(source, amount){
       const miss = !p.email;
       div.innerHTML=`<div class="appr-block-title">${order}차 결재자<span class="appr-tag auto">자동 지정</span> <span class="hint">— ${label}</span></div>
         <div class="appr-info"><input type="text" value="${escHtml(p.name||'')}" readonly placeholder="이름"><input type="email" value="${escHtml(p.email||'')}" readonly placeholder="이메일"></div>`
-        + (miss ? `<div style="font-size:.72rem;color:#a4262c;margin-top:6px">설정 파일에 이 역할의 담당자가 없습니다. IT팀(stk_it@hyosung.com)에 알려주세요.</div>` : '');
+        + (miss ? `<div style="font-size:.72rem;color:#a4262c;margin-top:6px">설정 파일에 이 역할의 담당자가 없습니다. ${itTeam('IT팀')}에 알려주세요.</div>` : '');
     } else {
       const label=roleDisp(role);
       div.innerHTML=`<div class="appr-block-title">${order}차 결재자 <span class="req-mark">*</span><span class="appr-tag manual">직접 선택</span> <span class="hint">— ${label}</span></div>
@@ -1741,7 +1768,7 @@ async function submitForm(){
     if(fx){
       // 자동 지정 역할은 설정 파일에서 온다. 비어 있으면 결재자 없는 행이 만들어지므로 상신을 막는다.
       const p=fx[1]()||{};
-      if(!p.email){ alert(order+'차 결재자('+fx[0]+')가 설정 파일에 없습니다.\n\nIT팀(stk_it@hyosung.com)에 알려주세요.'); return; }
+      if(!p.email){ alert(order+'차 결재자('+fx[0]+')가 설정 파일에 없습니다.\n\n'+itTeam('IT팀')+'에 알려주세요.'); return; }
     } else {
       const email=document.getElementById('ga'+order+'-email')?.value;
       if(!email){alert((order)+'차 결재자('+ROLE_LABELS[role]+')를 지정해주세요.');return;}
@@ -2151,7 +2178,7 @@ async function processApproval(apprId,action,reqId,comment=''){
         console.error('[결재] 결재 행 조회 결과가 비어 있음 — 승인완료 전환 중단. RequestID:', reqId);
         _lgRes = '승인 기록 · 다음 단계로 넘기지 못함(결재 행 조회 0건)'; _lg(_lgAct, _lgRes);   // APS 와 같은 문구(10-15)
         showAlert('승인은 기록되었으나 다음 단계로 넘기지 못했습니다.',
-          '잠시 후 결재함에서 상태를 다시 확인해 주세요. 계속 같은 증상이면 IT팀(stk_it@hyosung.com)에 알려주세요.','⚠️');
+          '잠시 후 결재함에서 상태를 다시 확인해 주세요. 계속 같은 증상이면 '+itTeam('IT팀')+'에 알려주세요.','⚠️');
         closeModal(); loadApprovalQueue();
         return;
       }
@@ -2955,7 +2982,7 @@ async function gwRollbackIncomplete(reqId, vid, made, total){
   if(ok) showAlert('신청을 완료하지 못했습니다',
     `결재선이 ${made}/${total}단계만 만들어져 이 신청(${vid})은 자동으로 철회 처리했습니다. 결재는 시작되지 않았으니 다시 신청해 주세요.`, '⚠️');
   else showAlert('신청을 완료하지 못했습니다',
-    `결재선이 ${made}/${total}단계만 만들어졌고 자동 철회에도 실패했습니다. 다시 신청하지 마시고 IT팀(stk_it@hyosung.com)에 ${vid}를 알려주세요.`, '⚠️');
+    `결재선이 ${made}/${total}단계만 만들어졌고 자동 철회에도 실패했습니다. 다시 신청하지 마시고 ${itTeam('IT팀')}에 ${vid}를 알려주세요.`, '⚠️');
   loadMyList();
 }
 
